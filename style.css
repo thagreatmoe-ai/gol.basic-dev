@@ -346,4 +346,56 @@ body, #app, main, .view{ padding-top:0 !important; }
 /* 4) Cosmetic: remove stray marker in task summary row */
 #todayTasks .item .summary::before,
 #todayTasks .item .summary::after{ content:none !important; }
+/* ---- Force tab bar flush to device bottom (no visible safe-area gap) ---- */
+:root{ --tabbar-h:64px; } /* keep your current visual height */
+
+body{ padding-bottom:var(--tabbar-h) !important; }  /* content reserves only the bar's height */
+
+#tabbar{
+  height:var(--tabbar-h) !important;
+  padding-bottom:0 !important;
+  bottom:0 !important;
+}
+/* ---- Icons-only tabs (hide the label text) ---- */
+#tabbar .tab > span{ display:none !important; }
+#tabbar .tab svg{ width:22px; height:22px; }  /* keep icons clear */
 #todayTasks .item .summary, #todayTasks .item .summary *{ outline:0 !important; }
+/* ---- Keep the FAB hovering just above the bar ---- */
+.fab{ bottom:calc(var(--tabbar-h) + 16px) !important; }
+/* ---- Make the big Today card translucent to match top cards ---- */
+#view-today > .card{
+  background:rgba(16,24,52,.38) !important;
+  border:1px solid rgba(34,48,87,.55) !important;
+  backdrop-filter:blur(14px) saturate(1.1);
+  -webkit-backdrop-filter:blur(14px) saturate(1.1);
+}
+/* ---- Slim XP ribbon under the header ---- */
+#xpRibbon, #xpStrip{
+  height:8px; margin:6px 16px 8px; border-radius:999px;
+  background:rgba(255,255,255,.08); overflow:hidden;
+}
+#xpRibbon .fill, #xpStrip .fill{
+  height:100%; width:0%; transition:width .3s ease;
+  background:linear-gradient(90deg,var(--accent,#7b8cff), #9aa7ff);
+}
+/* keep the gap tight before the top split */
+#xpRibbon + .top-split, #xpStrip + .top-split{ margin-top:8px; }
+/* ---- Task tiles: accent spine on the left ---- */
+#todayTasks .item{ position:relative; overflow:hidden; }
+#todayTasks .item::before{
+  content:""; position:absolute; top:0; bottom:0; left:0; width:4px;
+  background:linear-gradient(180deg, var(--accent,#7b8cff), #9aa7ff);
+  opacity:.8;
+}
+/* ---- Drawer should cover content; hamburger stays visible ---- */
+#hamburger{ width:48px; height:48px; display:grid; place-items:center; }
+.ham{ width:22px; height:2px; background:var(--text); position:relative; display:block; }
+.ham::before,.ham::after{ content:""; position:absolute; left:0; right:0; height:2px; background:var(--text); }
+.ham::before{ top:-6px; } .ham::after{ top:6px; }
+
+#backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:998 !important; display:none; }
+#drawer{ position:fixed; top:0; left:0; bottom:0; width:80%; max-width:360px;
+  background:var(--panel); border-right:1px solid var(--border);
+  transform:translateX(-100%); transition:.25s; z-index:999 !important;
+}
+#drawer.open{ transform:translateX(0); }
