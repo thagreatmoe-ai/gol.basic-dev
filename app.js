@@ -126,12 +126,25 @@ function applyDailyPenalties(day){
     if(wasSkippedOrPostponed(t.id,day,day)) return;
     const pr=progressForRange(t,day,day);
     if(!pr.done){
-      const loss=penaltyFor(t);
-      if(loss>0){
-        state.tokens -= loss;
-        state.history.push({id:uid(),date:day,taskId:t.id,name:`Penalty: ${t.name}`,base:0,final:0,flags:['penalty','daily'],fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-loss});
-      }
-    }
+  const lossTok = penaltyFor(t);             // tokens lost (unchanged)
+  const xpLoss  = (Number(t.points)||0) * 2; // NEW: lose 2 × base points
+
+  // apply XP loss (affects main + field)
+  adjustMainXP(-xpLoss);
+  adjustFieldXP(t.fieldId, -xpLoss);
+
+  // apply token loss
+  if(lossTok>0) state.tokens -= lossTok;
+
+  // record penalty in history with negative final (so undo works)
+  state.history.push({
+    id: uid(), date: day, taskId: t.id, name: `Penalty: ${t.name}`,
+    base: 0, final: -xpLoss,                    // <-- negative final for XP loss
+    flags: ['penalty','daily'],
+    fieldId: t.fieldId, unit: t.qtyType, amount: 0,
+    tokens: -(lossTok||0)
+  });
+}
   });
   save();
 }
@@ -142,12 +155,19 @@ function applyWeeklyPenalties(day){
     if(wasSkippedOrPostponed(t.id,s,e)) return;
     const pr=progressForRange(t,s,e);
     if(!pr.done){
-      const loss=penaltyFor(t);
-      if(loss>0){
-        state.tokens -= loss;
-        state.history.push({id:uid(),date:e,taskId:t.id,name:`Penalty (week): ${t.name}`,base:0,final:0,flags:['penalty','week'],fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-loss});
-      }
-    }
+  const lossTok = penaltyFor(t);
+  const xpLoss  = (Number(t.points)||0) * 2;
+
+  adjustMainXP(-xpLoss);
+  adjustFieldXP(t.fieldId, -xpLoss);
+  if(lossTok>0) state.tokens -= lossTok;
+
+  state.history.push({
+    id:uid(),date:e,taskId:t.id,name:`Penalty (week): ${t.name}`,
+    base:0,final:-xpLoss,flags:['penalty','week'],
+    fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-(lossTok||0)
+  });
+}
   });
   save();
 }
@@ -158,12 +178,19 @@ function applyMonthlyPenalties(day){
     if(wasSkippedOrPostponed(t.id,s,e)) return;
     const pr=progressForRange(t,s,e);
     if(!pr.done){
-      const loss=penaltyFor(t);
-      if(loss>0){
-        state.tokens -= loss;
-        state.history.push({id:uid(),date:e,taskId:t.id,name:`Penalty (month): ${t.name}`,base:0,final:0,flags:['penalty','month'],fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-loss});
-      }
-    }
+  const lossTok = penaltyFor(t);
+  const xpLoss  = (Number(t.points)||0) * 2;
+
+  adjustMainXP(-xpLoss);
+  adjustFieldXP(t.fieldId, -xpLoss);
+  if(lossTok>0) state.tokens -= lossTok;
+
+  state.history.push({
+    id:uid(),date:e,taskId:t.id,name:`Penalty (month): ${t.name}`,
+    base:0,final:-xpLoss,flags:['penalty','month'],
+    fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-(lossTok||0)
+  });
+}
   });
   save();
 }
@@ -631,11 +658,11 @@ function undoRecentForTask(taskId){
     }
   }
 
-  if(h.final > 0){
-    adjustMainXP(-h.final);
-    adjustFieldXP(h.fieldId, -h.final);
-  }
-  state.tokens -= tokenDelta;
+  if(h.final !== 0){
+  adjustMainXP(-h.final);
+  adjustFieldXP(h.fieldId, -h.final);
+}
+state.tokens -= tokenDelta;
 
   state.history.splice(i,1);
   save();
@@ -670,10 +697,11 @@ function undoEntry(id){
     }
   }
 
-  if(h.final > 0){
-    adjustMainXP(-h.final);
-    adjustFieldXP(h.fieldId, -h.final);
-  }
+  if(h.final !== 0){
+  // Works for both earned XP (positive) and penalty XP (negative)
+  adjustMainXP(-h.final);
+  adjustFieldXP(h.fieldId, -h.final);
+}
   state.tokens -= tokenDelta;
 
   state.history.splice(i,1);
