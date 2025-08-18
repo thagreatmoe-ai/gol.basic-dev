@@ -1,345 +1,160 @@
 /* ===========================
-   GoL Modern — CSS (clean drop-in)
-   - Side-by-side top cards (Resistance + Quick Session)
-   - Partially transparent “glass” cards; text/inputs/buttons are opaque
-   - iOS-style toggle switch styles
-   - Compact top cards for more space for tasks
-   =========================== */
+ GoL — Clean CSS (safe-area removed)
+ Mobile-first, dark, glassy cards
+=========================== */
 
 /* -------- Tokens -------- */
 :root{
-  /* Theme colors (JS may override these via applyTheme) */
-  --bg:#0d1020;
-  --panel:#0f1530;
-  --card:#101835cc;           /* semi-transparent glass base */
-  --text:#eef1ff;
-  --muted:#aab2d9;
+  /* Theme */
+  --bg:#0b0f1a;
+  --panel:#12172a;
+  --card:#18203a;
+  --text:#f4f7ff;
+  --muted:#a6b0d6;
   --accent:#7b8cff;
   --accent2:#38d39f;
   --danger:#ff6b6b;
-  --border:#22305780;
+  --border:#253055;
 
   /* Sizes */
-  --tabbar-h:56px;
-  --radius-lg:18px;
+  --tabbar-h:64px;   /* visible height of the bottom bar */
+  --radius-lg:16px;  /* main card radius */
   --radius-md:12px;
-  --space-2:8px;
-  --space-3:12px;
-  --space-4:16px;
-
-  /* Type */
-  --h1:28px; --h2:22px; --h3:18px; --body:16px; --small:13px; --tiny:12px;
 }
 
 /* -------- Base / layout -------- */
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
-html,body{ margin:0; background:var(--bg); color:var(--text); font:400 var(--body)/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif; }
-body{
-  /* safe areas */
-  padding-top:env(safe-area-inset-top);
-  padding-bottom:calc(env(safe-area-inset-bottom) + var(--tabbar-h));
-  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-
-  /* subtle ambient glows */
-  background:
-    radial-gradient(1200px 700px at 20% -10%, #2331a61a, transparent 60%),
-    radial-gradient(900px 600px at 100% 0%, #5b36ff14, transparent 55%),
-    var(--bg);
+html,body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
 }
-
 #app{ min-height:100vh; }
 
-/* prevent sideways scroll */
+/* Page content leaves room only for the visible tab bar (no safe area) */
+body{ padding-bottom:var(--tabbar-h); }
+
+/* Prevent side scroll */
 html, body, main, .view { overflow-x:hidden; }
 
 /* -------- Top bar -------- */
 .topbar{
   position:sticky; top:0; z-index:30;
   display:flex; align-items:center; gap:12px;
-  padding:calc(env(safe-area-inset-top) + 8px) var(--space-4) var(--space-3);
-  background:rgba(15,21,48,.8);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
+  padding:10px 12px;
+  background:linear-gradient(180deg,var(--panel),rgba(18,23,42,.7));
   border-bottom:1px solid var(--border);
 }
 .topbar .top-title{ flex:1; }
 .topbar .top-right{ display:flex; gap:6px; }
 
-#hamburger{ width:48px; height:48px; display:grid; place-items:center; background:transparent; border:none; color:var(--text); border-radius:12px; }
-#hamburger:active{ background:rgba(255,255,255,.06); }
-.ham{ width:22px; height:2px; background:var(--text); position:relative; display:block; }
-.ham::before,.ham::after{ content:""; position:absolute; left:0; right:0; height:2px; background:var(--text); }
-.ham::before{ top:-6px; } .ham::after{ top:6px; }
+#hamburger{ background:transparent; border:none; color:var(--text); font-size:22px; }
 
 /* -------- Drawer -------- */
 #backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; z-index:19; }
-#drawer{ position:fixed; z-index:20; top:0; left:0; bottom:0; width:80%; max-width:360px; background:var(--panel); border-right:1px solid var(--border); transform:translateX(-100%); transition:.25s; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
+#drawer{
+  position:fixed; z-index:20; top:0; left:0; bottom:0;
+  width:80%; max-width:360px;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  transform:translateX(-100%);
+  transition:.25s transform ease;
+  display:flex; flex-direction:column;
+}
 #drawer.open{ transform:translateX(0); }
 .drawer-header{ display:flex; gap:12px; align-items:center; padding:16px; border-bottom:1px solid var(--border); }
 .drawer-nav{ display:flex; flex-direction:column; padding:8px; }
 .nav-item{ background:transparent; border:1px solid var(--border); color:var(--text); padding:12px; border-radius:12px; text-align:left; margin:6px 8px; }
 
 /* -------- Chips / avatar -------- */
-.chip{ background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:999px; padding:6px 10px; font-size:12px; }
+.chip{ background:var(--card); border:1px solid var(--border); border-radius:999px; padding:6px 10px; font-size:12px; }
 .avatar{ width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#6d77ff,#33d3a1); display:grid; place-items:center; font-weight:800; }
 .avatar.big{ width:64px; height:64px; font-size:20px; }
+.sub{ color:var(--muted); }
+.small{ font-size:12px; }
 
 /* -------- Cards / lists -------- */
 main{ padding:12px; }
-.view{ display:none; } .view.active{ display:block; }
+.view{ display:none; }
+.view.active{ display:block; }
 
-.card, .item{
-  background:var(--card);                 /* semi-transparent */
+.card{
+  background:var(--card);
   border:1px solid var(--border);
   border-radius:var(--radius-lg);
-  padding:16px;
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  padding:12px;
+  margin-bottom:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 
-.card.hero{
-  background:linear-gradient(135deg,#6f7cff33,#5adfb633);
-  border-color:transparent;
+/* Glass flavor for top cards */
+.card.glass{
+  background:rgba(16,24,52,.38);
+  border:1px solid rgba(37,48,85,.6);
+  backdrop-filter:blur(14px) saturate(1.05);
+  -webkit-backdrop-filter:blur(14px) saturate(1.05);
 }
 
 .list{ display:flex; flex-direction:column; gap:8px; }
 
-/* Task item accent */
-.item{ position:relative; }
-.item::before{
-  content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
-  background:linear-gradient(180deg,var(--accent),#9aa7ff);
-  border-top-left-radius:var(--radius-lg); border-bottom-left-radius:var(--radius-lg);
-  opacity:.7;
-}
-.item.done,.item.skipped,.item.postponed{ opacity:.6; }
-
-/* Buttons */
-.btn{
-  border-radius:999px;
-  padding:10px 16px;
-  font-weight:600;
-  transition:transform .14s ease, opacity .14s ease;
-  background:var(--accent); color:#0d1020; border:none;
-}
-.btn:active{ transform:translateY(1px) scale(.98); }
-.btn.alt{ background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text); }
-.btn.danger{ background:var(--danger); color:#000; }
-
-/* Inputs */
-.input{
-  background:rgba(255,255,255,.06);
+.item{
+  display:flex; gap:8px; align-items:center;
   border:1px solid var(--border);
+  background:var(--panel);
   border-radius:12px;
-  color:var(--text);
-  padding:10px 12px; outline:none;
+  padding:10px;
 }
-.input.small{ min-width:92px; }
-.input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px #7b8cff2e; }
-
-/* Text helpers */
-.sub{ color:var(--muted); }
-.small{ font-size:var(--small); }
-.badge{ padding:2px 8px; border-radius:999px; font-size:var(--tiny); border:1px solid var(--border); color:var(--muted); }
-.badge.success{ background:#38d39f22; color:#bdf2dc; border-color:#38d39f55; }
-.badge.skip{ background:#ff6b6b22; color:#ffc0c0; border-color:#ff6b6b55; }
-.badge.postpone{ background:#7b8cff22; color:#cfd5ff; border-color:#7b8cff55; }
 
 /* Progress bar */
-.bar{ height:8px; background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
-.fill{ height:100%; background:linear-gradient(90deg,var(--accent),#a9b4ff); width:0%; transition:width .25s ease; }
+.bar{
+  height:10px;
+  background:#0a0f1c;
+  border:1px solid var(--border);
+  border-radius:999px;
+  overflow:hidden;
+}
+.fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  width:0%;
+  transition:width .25s ease;
+}
+
+/* Buttons / inputs */
+.btn{ background:var(--accent); border:none; color:#fff; border-radius:12px; padding:10px 14px; font-weight:700; }
+.btn.alt{ background:var(--panel); border:1px solid var(--border); color:var(--text); }
+.btn.ghost{ background:transparent; border:1px dashed var(--border); color:var(--muted); }
+.btn.danger{ background:var(--danger); }
+
+.input{
+  width:100%;
+  background:#0b1022;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px;
+}
 
 /* Tables */
-/* Tables (prevent right-edge clipping in History) */
-/* Tables — restore natural layout (no clipping), add long-press action row */
-.table{
-  width:100%;
-  border-collapse: collapse;
-  table-layout: auto;              /* let columns size naturally */
-}
-.table th,
-.table td{
-  border-bottom:1px solid var(--border);
-  text-align:left;
-  padding:8px;
-  font-size:13px;
-  vertical-align: middle;
-}
+.table{ width:100%; border-collapse:collapse; }
+.table th,.table td{ border-bottom:1px solid var(--border); text-align:left; padding:8px; font-size:13px; }
 
-/* Long-press “expanded” action row that appears under the tapped row */
-.hist-row{}                         /* marker class for main rows */
-.hist-undo{ display:none; background:rgba(255,255,255,.03); }
-.hist-undo td{
-  padding:10px 8px 12px;
-  border-bottom:1px solid var(--border);
-}
-.hist-undo .actions{
-  display:flex; justify-content:flex-end; gap:8px;
-}
-
-/* When a main row is in show state, reveal the next .hist-undo row */
-.hist-row.show-undo + .hist-undo{ display:table-row; }
-/* ===== Stats page spacing (more breathing room between cards) ===== */
-#view-stats .card{
-  /* bigger vertical gaps, keep left/right consistent with main padding */
-  margin: 18px 12px;
-}
-
-/* when there are two cards side-by-side at the top (Overview + Fields), increase the gutter */
-#view-stats .grid2{
-  gap: 18px;
-  margin-bottom: 6px;  /* small extra gap under the grid block */
-}
-
-/* make sure any “hero”/special cards in Stats get the same margin */
-#view-stats .card.hero{
-  margin: 18px 12px;
-}
-/* ====== Profile page spacing (match Stats breathing room) ====== */
-#view-profile .card{
-  margin: 18px 12px;
-}
-
-#view-profile .grid2{
-  gap: 18px;
-  margin-bottom: 6px;
-}
-
-#view-profile .card.hero{
-  margin: 18px 12px;
-}
-
-/* Optional: ensure nice top/bottom edges inside Profile view */
-#view-profile .card:first-child{ margin-top: 18px; }
-#view-profile .card:last-child{  margin-bottom: 18px; }
-
-/* -------- Bottom tabbar -------- */
-#tabbar{
-  position:fixed; left:0; right:0; bottom:0; z-index:25;
-  height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-  padding-bottom:env(safe-area-inset-bottom);
-  display:flex; justify-content:space-around; align-items:center;
-  background:rgba(15,21,48,.92);
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  border-top:1px solid var(--border);
-}
-#tabbar .tab{ color:var(--muted); text-decoration:none; min-width:44px; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
-#tabbar .tab svg{ width:22px; height:22px; }
-#tabbar .tab.active{ color:#fff; }
-#tabbar .tab.active svg path{ fill:var(--accent); }
-
-/* -------- Toast -------- */
-#toast{
-  position:fixed; left:50%;
-  bottom:calc(env(safe-area-inset-bottom) + var(--tabbar-h));
-  transform:translateX(-50%) translateY(24px);
-  background:rgba(28,36,64,.96);
-  color:var(--text);
-  padding:12px 16px; border:1px solid var(--border); border-radius:12px;
-  box-shadow:0 12px 30px rgba(0,0,0,.35);
-  font-size:14px; pointer-events:none; opacity:0;
-  transition:opacity .18s ease, transform .18s ease; z-index:9998;
-}
-#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-#toast[data-type="ok"]{ background:rgba(56,211,159,.15); color:#b0f1d8; border-color:rgba(56,211,159,.35); }
-#toast[data-type="warn"]{ background:rgba(255,181,71,.17); color:#ffd9a0; border-color:rgba(255,181,71,.35); }
-#toast[data-type="danger"]{ background:rgba(255,107,107,.15); color:#ffc0c0; border-color:rgba(255,107,107,.35); }
-#toast[data-type="info"]{ background:rgba(123,140,255,.18); color:#c8d0ff; border-color:rgba(123,140,255,.35); }
-
-/* -------- FAB (+ Task) -------- */
-.fab{
-  position:fixed; right:16px;
-  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px);
-  width:56px; height:56px; border-radius:50%;
-  display:none; align-items:center; justify-content:center;
-  padding:0; line-height:1; font-size:28px; font-weight:700;
-  background:linear-gradient(90deg,var(--accent),#9aa7ff);
-  color:#0d1020; border:none; box-shadow:0 12px 30px rgba(0,0,0,.35);
-}
-
-/* -------- Sheet -------- */
-.sheet{ position:fixed; z-index:40; left:0; right:0; bottom:0; transform:translateY(100%); background:var(--panel); border-top:1px solid var(--border); border-radius:16px 16px 0 0; padding:12px; max-height:85vh; overflow:auto; transition:.25s transform; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
-.sheet.open{ transform:translateY(0); }
-
-/* -------- Today task cards (compact & collapsible) -------- */
-#todayTasks .item{
-  display:block; padding:14px 16px; border-radius:16px;
-  background:var(--card); box-shadow:0 6px 22px rgba(0,0,0,.35);
-  margin:10px 6px;
-}
-#todayTasks .item .summary{
-  display:flex; align-items:center; gap:10px; flex-wrap:nowrap; min-height:28px;
-}
-#todayTasks .item .summary .title{
-  font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;
-}
-#todayTasks .item .summary .spacer{ flex:1; }
-#todayTasks .item .summary .count{ margin-left:auto; font-weight:700; opacity:.9; }
-#todayTasks .item .bar{ height:6px; background:rgba(255,255,255,.06); border-radius:999px; margin-top:8px; }
-#todayTasks .item .bar .fill{ height:100%; width:0; background:var(--accent); border-radius:999px; transition:width .3s ease; }
-#todayTasks .item .details{ display:none; margin-top:12px; }
-#todayTasks .item.open .details{ display:block; }
-#todayTasks .item .badge{ margin-left:8px; }
-
-/* -------- Forms / rows -------- */
-.row{ display:flex; align-items:center; }
-.row-between{ display:flex; align-items:center; justify-content:space-between; }
-.gap8{ gap:8px; }
-.wrap{ flex-wrap:wrap; }
-.grow{ flex:1; }
-.stack{ display:flex; flex-direction:column; }
-.stack.small.narrow .input.small{ min-width:0; }
-.row.gap8 > .stack.small,
-.row.gap8 > .stack.small.narrow{ flex:1 1 160px; }
-
-/* -------- Badges in header buttons -------- */
-#view-today #btnAddTask{ display:none; }     /* hide duplicate when FAB present */
-
-/* ===================== */
-/*  TOP SPLIT (header)   */
-/* ===================== */
-
-/* Two cards side-by-side on phones; stack only on very narrow screens */
+/* -------- Top split (Resistance + Quick Session) -------- */
 .top-split{
   display:grid;
   grid-template-columns:repeat(2, minmax(0,1fr));
   gap:12px;
-  margin:12px 0 12px;
+  margin:12px 0;
 }
 @media (max-width:359px){
   .top-split{ grid-template-columns:1fr; }
 }
+#resistCard, #quickCard{ padding:12px; display:flex; flex-direction:column; gap:10px; }
 
-/* Glass look with partially transparent container but solid controls */
-.card.glass{
-  background:rgba(16,24,52,.38);
-  border:1px solid rgba(34,48,87,.55);
-  backdrop-filter:blur(14px) saturate(1.15);
-  -webkit-backdrop-filter:blur(14px) saturate(1.15);
-}
-.card.glass .input,
-.card.glass .btn{
-  background:#0f162e;                 /* opaque controls */
-  color:var(--text);
-  border-color:rgba(255,255,255,.08);
-}
-
-/* Compact padding in top cards */
-#resistCard, #quickCard{ padding:12px; }
-
-/* Equal heights; left card is a square */
-#resistCard{
-  aspect-ratio:1/1;                     /* square */
-  display:flex; flex-direction:column; gap:10px;
-}
-#quickCard{
-  display:flex; flex-direction:column; gap:10px;
-}
-
-/* Hide secondary label next to switches (you said toggle UI is obvious) */
-.switch .switch-label{ display:none; }
-
-/* -------- iOS-style switch (used for Resistance & Session) -------- */
+/* iOS-style switch */
 .switch{ position:relative; display:inline-block; width:52px; height:30px; }
 .switch input{ display:none; }
 .switch .slider{
@@ -348,533 +163,96 @@ main{ padding:12px; }
   transition:background .18s ease;
 }
 .switch .slider::before{
-  content:"";
-  position:absolute; top:3px; left:3px; width:24px; height:24px;
-  background:#fff; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,.35);
+  content:""; position:absolute; top:3px; left:3px; width:24px; height:24px;
+  background:#fff; border-radius:50%;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
   transition:transform .18s ease;
 }
 .switch input:checked + .slider{ background:var(--accent); }
 .switch input:checked + .slider::before{ transform:translateX(22px); }
 
-/* -------- Misc -------- */
+/* -------- Today’s tasks (comfy tiles) -------- */
+#todayTasks{ display:flex; flex-direction:column; gap:12px; }
+#todayTasks .item{ padding:16px 18px; margin:6px 0; }
+#todayTasks .bar{ height:6px; border-radius:999px; background:rgba(255,255,255,.06); }
+#todayTasks .bar .fill{ background:var(--accent); }
+
+/* -------- Sheet -------- */
+.sheet{
+  position:fixed; z-index:40; left:0; right:0; bottom:0;
+  transform:translateY(100%);
+  background:var(--panel);
+  border-top:1px solid var(--border);
+  border-radius:16px 16px 0 0;
+  padding:12px;
+  max-height:85vh;
+  overflow:auto;
+  transition:.25s transform;
+}
+.sheet.open{ transform:translateY(0); }
+
+/* -------- Bottom tab bar (flush to bottom, no safe area) -------- */
+#tabbar{
+  position:fixed; z-index:25; left:0; right:0; bottom:0;
+  height:var(--tabbar-h);
+  display:flex; justify-content:space-around; align-items:center;
+  background:rgba(18,23,42,.85);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  border-top:1px solid var(--border);
+  padding:0;                     /* no extra inner padding */
+}
+#tabbar::after{ content:none; }  /* make sure nothing paints a safe area */
+
+#tabbar .tab{
+  flex:1;
+  background:transparent; border:none;
+  color:var(--text); font-weight:700;
+  min-height:44px;               /* nice tap target */
+}
+#tabbar .tab.active{ color:var(--accent); }
+
+/* Floating + button sits just above the bar */
+.fab{
+  position:fixed; right:16px;
+  bottom:calc(var(--tabbar-h) + 16px);
+  width:56px; height:56px; border-radius:50%;
+  display:none; align-items:center; justify-content:center;
+  padding:0; line-height:1; font-size:28px; font-weight:700;
+  background:linear-gradient(90deg,var(--accent),#9aa7ff);
+  color:#0d1020; border:none;
+  box-shadow:0 12px 30px rgba(0,0,0,.35);
+}
+
+/* -------- Grids / KPIs -------- */
+.grid2{ display:grid; grid-template-columns:1fr; gap:12px; }
+@media (min-width:900px){ .grid2{ grid-template-columns:1fr 1fr; } }
+
 .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
 .kpi{ font-size:22px; font-weight:800; }
 
-/* Typography tweaks */
-h2, h3{ margin:0 0 10px; letter-spacing:.2px; }
-
-/* Make select/input rows wrap nicely on small screens */
-.item .actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-.item .actions .stack{ flex:1 1 220px; min-width:220px; }
-.item .actions .btn{ flex:1 1 120px; min-width:120px; }
-.item .actions select.input, .item .actions input.input{ width:100%; }
-/* === Fix: Profile form rows overflowing off-screen === */
-/* Let dense rows inside cards wrap on narrow phones */
-.card .row.gap8{ 
-  flex-wrap: wrap;
-}
-
-/* Make each label+field block shrink nicely */
-.card .row.gap8 > .stack{
-  flex: 1 1 180px;     /* grows, but can wrap */
-  min-width: 160px;    /* don’t get too tiny */
-}
-
-/* Keep action buttons (Save / +Title / +Reward / Prestige) natural size */
-.card .row.gap8 > .btn{
-  flex: 0 0 auto;
-}
-
-/* Ensure inputs/selects never exceed their column */
-.card .row.gap8 input.input,
-.card .row.gap8 select.input{
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-/* Hide existing-task list/cards inside the sheet when launched via FAB (add-only mode) */
-.addMode #sheet .list { display: none !important; }
-.addMode #sheet .item { display: none !important; }
-/* Quick Session: keep switch and timer on one line and card height stable */
-#quickCard .sess-row{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-top:8px;
-  min-height:34px;            /* row stays same height whether running or stopped */
-}
-
-#quickCard #timerBox{
-  margin:0;
-  color:var(--muted);
-  white-space:nowrap;         /* never wraps to a new line */
-  overflow:hidden;
-  text-overflow:ellipsis;     /* protects layout if text gets long */
-}
-/* === Today page: restore comfy size for the "Today's Tasks" card === */
-
-/* Add outside breathing room only to the big card under the top grid */
-#view-today > .card{
-  margin: 18px 12px;
-}
-
-/* Make the list area taller so the whole card doesn't look shrunken
-   when there are only a few tasks */
-#todayTasks{
-  min-height: 300px;          /* tweak to taste: 280–340px works well */
-  display: flex;               /* ensure flex container for gap to apply */
-  flex-direction: column;
-  gap: 12px;                   /* a bit more than the generic .list (8px) */
-  padding-bottom: 6px;         /* tiny breathing room at the bottom */
-}
-
-/* Slightly roomier task tiles inside that card */
-#todayTasks .item{
-  padding: 16px 18px;          /* up from 14x16 */
-  margin: 12px 6px;            /* a touch more separation between tiles */
-}
-/* ===== Fix header position & drawer stacking (override block) ===== */
-
-/* Remove the extra top padding on <body>. The header handles the safe area. */
-body{
-  padding-top: 0 !important;
-}
-
-/* Keep the header safe-area padding but make sure it sits flush at the top. */
-.topbar{
-  position: sticky;
-  top: 0;
-  z-index: 30; /* below the drawer we set higher, above content */
-  /* keep your existing internal padding for notch safety (already in your file).
-     If you want it tighter, you can use just env(safe-area-inset-top) */
-}
-
-/* Drawer should cover the header when opened */
-#backdrop{ z-index: 998 !important; }
-#drawer  { z-index: 999 !important; }
-
-/* Ensure the drawer starts at the very top and respects the notch padding */
-#drawer{
-  top: 0;                       /* already present but reaffirm */
-  padding-top: env(safe-area-inset-top);
-}
-
-/* Optional: make sure the drawer’s backdrop intercepts taps across the header too */
-#backdrop{ position: fixed; inset: 0; }
-
-/* If you previously added body padding on multiple places, this override keeps things consistent. */
-/* ===== Tighten bottom safe-area so there's no huge gap under the tab bar ===== */
+/* -------- Optional background customization hook -------- */
 :root{
-  /* Allow a small buffer for the home indicator but cap it so it doesn't look massive */
-  --safe-bottom: clamp(6px, env(safe-area-inset-bottom), 12px);
+  --bg-image:none;          /* e.g., url('…') set via JS */
+  --bg-size:cover;
+  --bg-pos:center center;
+  --bg-attach:fixed;
 }
-
-/* Content keeps clear of the fixed tabbar using the tightened value */
 body{
-  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom)) !important;
+  background-image:var(--bg-image);
+  background-size:var(--bg-size);
+  background-position:var(--bg-pos);
+  background-attachment:var(--bg-attach);
 }
 
-/* Make the tabbar itself shorter and still cover the home indicator area */
-#tabbar{
-  height: calc(var(--tabbar-h) + var(--safe-bottom)) !important;
-  padding-bottom: var(--safe-bottom) !important;
-}
-
-/* Keep the floating + button sitting just above the tabbar */
-.fab{
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 16px) !important;
-}
-/* === Compact tabbar: match earlier build height === */
-:root{
-  --tabbar-h:48px;   /* was 56px; keeps iOS safe-area via env() */
-}
-
-/* Keep height in sync with the new variable (explicit here for clarity) */
-#tabbar{
-  height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-  padding-bottom:env(safe-area-inset-bottom);
-}
-
-/* Slightly tighter content so the bar looks slimmer */
-#tabbar .tab{
-  min-height:44px;            /* keep Apple HIG touch target */
-  gap:2px;                    /* was ~6px */
-  padding:6px 0 4px;          /* subtle vertical compaction */
-  font-size:13px;             /* optional: a touch smaller label */
-}
-#tabbar .tab svg{
-  width:18px; height:18px;    /* icons scale with the slimmer bar */
-}
-
-/* (The FAB already uses var(--tabbar-h), so it will auto-shift up.) */
-/* === Icons-only bottom tabs === */
-#tabbar .tab{
-  gap:0;                       /* no space reserved for labels */
-  min-width:64px;              /* keep big touch targets */
-}
-
-/* hide the text labels */
-#tabbar .tab > span{ 
-  display:none;
-}
-
-/* make icons a touch bigger if you like */
-#tabbar .tab svg{
-  width:22px;
-  height:22px;
-}
-/* === Tabbar: keep same height but make it touch the bottom visually === */
-#tabbar{
-  height: var(--tabbar-h) !important;      /* keep your chosen bar height */
-  padding-bottom: 0 !important;             /* no extra inner padding */
-  bottom: 0;                                 /* sit at the bottom */
-}
-
-/* Paint the home-indicator area BELOW the bar so there’s no gap */
-#tabbar::after{
-  content: "";
-  position: absolute;
-  left: 0; right: 0;
-  bottom: calc(-1 * env(safe-area-inset-bottom)); /* draw below the bar */
-  height: env(safe-area-inset-bottom);            /* exactly the unsafe area */
-  background: inherit;                             /* same color as bar */
-  pointer-events: none;
-}
-/* === Flush tab bar to the true bottom (no visible gap) === */
-/* Place at the very end of style.css */
-
-/* Content should only reserve the bar's visual height, not the iOS inset again */
-body{
-  padding-bottom: var(--tabbar-h) !important;
-}
-
-/* The bar itself is exactly --tabbar-h tall; we'll paint the safe-area below it */
-#tabbar{
-  height: var(--tabbar-h) !important;
-  padding-bottom: 0 !important;
-  position: fixed; left: 0; right: 0; bottom: 0;
-  overflow: visible;            /* so the pseudo-element can render below */
-}
-
-/* Visually fill the iOS home-indicator area so the bar appears attached */
-#tabbar::after{
-  content: "";
-  position: absolute; left: 0; right: 0; bottom: 0;
-  height: env(safe-area-inset-bottom);
-  background: inherit;          /* same bg as the tabbar */
-  border-top: 1px solid var(--border);
-  pointer-events: none;         /* that area is not tappable on iOS anyway */
-  transform: translateY(100%);  /* render it just below the bar */
-}
-/* ===== Customizable page background (color/gradient/photo) ===== */
-:root{
-  --bg-image: none;          /* set by JS via applyTheme() */
-  --bg-size: cover;
-  --bg-pos: center center;
-  --bg-attach: fixed;
-}
-
-/* Ensure image layers with the color/gradient underneath */
-body{
-  background: var(--bg);                 /* color or gradient */
-  background-image: var(--bg-image);     /* optional photo */
-  background-size: var(--bg-size);
-  background-position: var(--bg-pos);
-  background-attachment: var(--bg-attach);
-}
-
-/* Small chip buttons used in the sheet */
-.chip{
-  padding:8px 12px;
-  border-radius:12px;
-  background:rgba(255,255,255,.06);
-  border:1px solid var(--border, rgba(255,255,255,.08));
-  font-size:13px;
-}
-#sheet .row.wrap{ flex-wrap: wrap; }
-/* ---- Make the big "Today's Tasks" card translucent like the small cards ---- */
-/* Use whichever selector matches your markup; leaving all three is fine. */
-#view-today #tasksCard,
-#view-today .card.tasksCard,
-#view-today .card[data-section="tasks"]{
-  background: rgba(15,21,48,.64);              /* same family as .card.glass */
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,.06);
-  box-shadow: 0 12px 24px rgba(0,0,0,.35), inset 0 1px rgba(255,255,255,.03);
-}
-/* ---- Pin tab bar flush to the very bottom (cover the safe area) ---- */
-
-/* Let the page content reserve only the visible tab height (not the safe area).
-   The tab bar itself will include the safe-area inset. */
-body{
-  padding-bottom: var(--tabbar-h) !important;
-}
-
-/* Make the tab bar extend all the way to the screen edge and paint under
-   the home indicator by adding the safe-area to its own height. */
-#tabbar{
-  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom)) !important;
-  padding-bottom: env(safe-area-inset-bottom) !important;
-  bottom: 0; left: 0; right: 0;
-}
-
-/* Extra safety: if some older CSS elsewhere still draws a spacer, kill it. */
-.safe-bottom, .safe-area-spacer, .ios-bottom-spacer{
-  display: none !important;
-}
-
-/* Optional: if a browser doesn’t support env(), fall back gracefully */
-@supports not (padding-bottom: env(safe-area-inset-bottom)){
-  #tabbar{ height: var(--tabbar-h) !important; padding-bottom: 0 !important; }
-}
-/* --- Force tab bar flush to device bottom without changing its height --- */
-body{
-  /* Reserve only the visible bar height for page content (no extra safe-area gap) */
-  padding-bottom: var(--tabbar-h) !important;
-}
-
-#tabbar{
-  /* Keep the same visual height; do NOT grow for the safe area */
-  height: var(--tabbar-h) !important;
-  padding-bottom: 0 !important;
-
-  /* Push the whole bar down into the safe-area so it sits at the very bottom */
-  bottom: calc(0px - env(safe-area-inset-bottom)) !important;
-}
-
-/* If any other spacer was added, kill it */
-.safe-bottom, .safe-area-spacer, .ios-bottom-spacer{
-  display: none !important;
-}
-
-/* Fallback for browsers without env() support (does nothing harmful) */
-@supports not (padding-bottom: env(safe-area-inset-bottom)){
-  #tabbar{ bottom: 0 !important; }
-}
-/* ---- Force the tab bar to sit flush with the screen bottom (no safe area) ---- */
-#tabbar{
-  height:var(--tabbar-h) !important;
-  padding-bottom:0 !important;
-  bottom:0 !important;
-}
-
-/* If any container added bottom padding for the safe area, neutralize it */
-body, #app, #views, .view{
-  padding-bottom:0 !important;
-  margin-bottom:0 !important;
-}
-/* ---- Make the big “Today’s Tasks” container glassy to match the top cards ---- */
-/* Today’s Tasks glass style (id is stable regardless of DOM order) */
-#todayCard{
-  background:rgba(13,19,35,.62) !important;
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border-color:rgba(255,255,255,.08) !important;
-}
-/* ---- Reposition the level strip that’s inside the Resistance card ---- */
-/* Assumptions: the thin progress element inside Resistance uses the same .bar/.fill
-   styles as your task progress bars. If your Resistance card has an id (#resistCard),
-   this selector will grab that bar; if your id differs, adjust #resistCard accordingly. */
-
-#view-today{ position:relative; }
-
-/* Pull the first progress bar inside the Resistance card up under the header */
-#resistCard .bar{
-  position:absolute !important;
-  left:24px; right:24px;
-  top:calc(var(--header-h, 88px) + 8px);  /* sits just under your header line */
-  z-index:5;
-}
-
-/* Give the top split some breathing space so cards don’t overlap the lifted strip */
-.top-split{ margin-top:52px !important; }  /* tweak 44–60px to taste */
-/* ===== XP strip under header ===== */
-#xpStrip{
-  margin: 10px 16px 12px;
-  height: 18px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  overflow: hidden;
-}
-#xpStrip .fill{
-  height: 100%;
-  width: 0%;
-  transition: width .3s ease;
-  background: linear-gradient(90deg, var(--accent, #7aa8ff), #4b6cff);
-}
-/* ===== Force tabbar flush to bottom & keep original height ===== */
-#tabbar{
-  height: var(--tabbar-h) !important;
-  padding-bottom: 0 !important;
-}
-
-#views, main, .view{
-  /* leave a tiny cushion so content doesn't sit under the bar */
-  padding-bottom: calc(var(--tabbar-h) + 8px) !important;
-}
-/* ===== Compact XP ribbon: make it as tall as the section gap ===== */
-:root{
-  /* Use the same gap the layout already uses between sections. 
-     If you already have a variable for this, keep your value. */
-  --section-gap: 18px;
-}
-
-/* Keep the XP ribbon height equal to the normal section spacing. */
-#xpRibbon{
-  height: var(--section-gap);
-  margin: 0;             /* no extra vertical margin */
-  padding: 0;            /* remove vertical padding so it doesn't get taller */
-  display: flex;
-  align-items: center;   /* centers the bar within this compact height */
-}
-
-/* Slim progress rail; only side padding so the bar doesn’t touch edges. */
-#xpRibbon .bar{
-  height: 6px;           /* thin bar */
-  margin: 0 12px;        /* horizontal breathing room only */
-}
-
-/* Ensure there is no extra margin added above the cards. */
-.top-split{
-  margin-top: 0;         /* the XP ribbon itself provides the spacing */
-  /* keep your existing margin-bottom (usually ~18px) so spacing
-     between top cards and Today’s Tasks stays unchanged */
-}
-/* ===== Tighten the space below the XP ribbon ===== */
-
-/* keep the ribbon itself thin */
-#xpRibbon{ height: var(--section-gap); margin:0; padding:0; display:flex; align-items:center; }
-#xpRibbon .bar{ height:6px; margin:0 12px; }
-
-/* reduce the gap below the ribbon to a small, consistent value */
-#xpRibbon + .top-split{
-  margin-top: 8px !important;      /* << shrink the space here */
-  padding-top: 0 !important;        /* guard against padding from earlier styles */
-}
-
-/* make sure the first card isn’t adding its own top margin */
-#xpRibbon + .top-split > .card:first-child,
-#xpRibbon + .top-split > *:first-child{
-  margin-top: 0 !important;
-}
-/* ===== Old-school layout: NO iPhone safe-area insets (override) ===== */
-/* Put this block at the VERY END of style.css */
-:root{
-  /* pick the tab bar height you want (your earlier build used 64px) */
-  --tabbar-h: 64px;
-}
-
-/* Do NOT reserve extra space for the iOS home indicator */
-body{
-  padding-top: 0 !important;
-  padding-bottom: var(--tabbar-h) !important; /* only the bar height */
-}
-
-/* Optional: mirror the old model’s content spacer */
-#app{ min-height: 100vh; padding-bottom: var(--tabbar-h) !important; }
-
-/* Make sure content itself isn't adding more bottom spacing */
-#views, main, .view{
-  padding-bottom: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-/* Fixed-height tab bar that sits flush at the real bottom */
-#tabbar{
-  position: fixed !important;
-  left: 0; right: 0; bottom: 0 !important;
-  height: var(--tabbar-h) !important;
-  padding-bottom: 0 !important;       /* no extra inner padding */
-  overflow: visible !important;
-}
-
-/* Kill any pseudo “painted safe-area” */
-#tabbar::after{ content: none !important; }
-
-/* Old-school top bar padding (no top safe-area) */
-.topbar{
-  padding: 10px 12px !important;      /* same as your earlier model */
-}
-
-/* Keep the floating + button just above the bar */
-.fab{
-  bottom: calc(var(--tabbar-h) + 16px) !important;
-}
-
-/* If any helper classes tried to add a safe-area spacer, disable them */
-.safe-bottom, .safe-area-spacer, .ios-bottom-spacer{
-  display: none !important;
-}
-
-/* If there are any rules pushing the bar into/under the inset, neutralize them */
-#tabbar{
-  bottom: 0 !important;
-}
-/* === FORCE “OLD SCHOOL” TAB BAR (no iPhone safe area) === */
-/* Put this block at the VERY END of style.css */
-
-:root{
-  /* match your older build’s bar height; change if you prefer */
-  --tabbar-h: 64px;
-}
-
-/* Reserve only the visible bar height for page content (no extra safe-area gap) */
-body, #app, #views, .view, main{
-  padding-bottom: var(--tabbar-h) !important;
-  margin-bottom: 0 !important;
-}
-
-/* Pin the bar to the physical bottom; do NOT grow for the safe area */
-#tabbar{
-  position: fixed !important;
-  left: 0; right: 0; bottom: 0 !important;
-  height: var(--tabbar-h) !important;
-  padding-bottom: 0 !important;
-  overflow: visible;
-}
-
-/* Kill any pseudo “paint the safe area” trick if present */
-#tabbar::after{ display: none !important; }
-
-/* Anything else that tried to honor the safe area at the bottom */
-.safe-bottom, .safe-area-spacer, .ios-bottom-spacer{
-  display: none !important;
-}
-
-/* Keep floating + button comfortably above the bar (no env()) */
-.fab{
-  bottom: calc(var(--tabbar-h) + 16px) !important;
-}
-
-/* Toasts and similar bottom UI should also respect only the bar height */
+/* -------- Toast (unchanged) -------- */
 #toast{
-  bottom: var(--tabbar-h) !important;
+  position:fixed; left:50%; bottom:calc(var(--tabbar-h) + 12px);
+  transform:translateX(-50%); background:rgba(28,36,64,.96);
+  color:var(--text); padding:12px 16px; border:1px solid var(--border);
+  border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.35);
+  font-size:14px; pointer-events:none; opacity:0;
+  transition:opacity .18s ease, transform .18s ease; z-index:9998;
 }
-/* === Compact XP strip under header (thin + no extra vertical gap) === */
-#xpStrip{
-  height:6px;
-  margin:8px 12px 8px;        /* small, even spacing above/below */
-  border-radius:999px;
-  background:rgba(255,255,255,.12);
-  overflow:hidden;
-}
-#xpStrip .fill{
-  height:100%;
-  width:0%;                   /* JS sets this */
-  background:linear-gradient(90deg, var(--accent), #9aa7ff);
-  transition:width .25s ease;
-}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
 
-/* === Tighten spacing between the XP strip and the top cards === */
-#xpStrip + .top-split{
-  margin-top:8px !important;  /* was 12px; reduce the gap directly below the strip */
-}
-
-/* === Make the big Today’s Tasks card “glassy” like the top cards === */
-#todayCard{
-  background:rgba(16,24,52,.38) !important;        /* same family as .card.glass */
-  border:1px solid rgba(34,48,87,.55) !important;
-  backdrop-filter:blur(14px) saturate(1.15);
-  -webkit-backdrop-filter:blur(14px) saturate(1.15);
-}
+/* ===== End — no env(safe-area-*) anywhere ===== */
