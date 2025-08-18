@@ -256,3 +256,94 @@ body{
 #toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
 
 /* ===== End — no env(safe-area-*) anywhere ===== */
+/* FIX PACK — header safe top (no layout changes elsewhere) */
+.topbar{
+  padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+  min-height: calc(44px + env(safe-area-inset-top)) !important;
+}
+/* make sure we didn’t also pad the page itself at the top */
+body, #app, main, .view{ padding-top:0 !important; }
+/* FIX PACK — compact, flush tab bar */
+:root{ --tabbar-h: 56px; } /* only used here; keep your look */
+
+#tabbar{
+  position:fixed; left:0; right:0; bottom:0; z-index:25;
+  height:var(--tabbar-h) !important;      /* visual height only */
+  padding-bottom:0 !important;             /* don't grow for safe area */
+  display:flex; justify-content:space-around; align-items:center;
+  background:rgba(18,23,42,.85); backdrop-filter:blur(6px);
+  border-top:1px solid var(--border);
+  overflow:visible;                         /* allow ::after to paint below */
+}
+
+/* Paint the unsafe area below the bar so there's no visible gap */
+#tabbar::after{
+  content:""; position:absolute; left:0; right:0;
+  bottom: calc(-1 * env(safe-area-inset-bottom));
+  height: env(safe-area-inset-bottom);
+  background: inherit; border-top: 1px solid var(--border);
+  pointer-events: none;
+}
+
+/* Keep page content clear of the bar (only the bar height, not the safe area) */
+#app{ padding-bottom: var(--tabbar-h) !important; }
+
+/* Put icons *inside* the bar and normalize their size */
+#tabbar .tab{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:var(--tabbar-h); min-width:64px; gap:4px; font-size:13px;
+}
+#tabbar .tab svg, #tabbar .tab img{ width:22px; height:22px; display:block; }
+/* FIX PACK — bottom sheet breathing room */
+.sheet{
+  padding-bottom: max(16px, env(safe-area-inset-bottom) + 16px) !important;
+}
+/* FIX PACK — remove any decorative marker from the summary row */
+#todayTasks .item .summary::before,
+#todayTasks .item .summary::after{ content:none !important; }
+#todayTasks .item .summary, #todayTasks .item .summary *{ outline:0 !important; }
+/* =========================
+   FIX PACK (drop-in overrides)
+   ========================= */
+
+/* 1) Header: avoid notch overlap */
+.topbar{
+  padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+  min-height: calc(44px + env(safe-area-inset-top)) !important;
+}
+body, #app, main, .view{ padding-top:0 !important; }
+
+/* 2) Tab bar: icons inside, bar flush to bottom (no visible gap) */
+:root{ --tabbar-h: 56px; }
+#tabbar{
+  position:fixed; left:0; right:0; bottom:0; z-index:25;
+  height:var(--tabbar-h) !important;
+  padding-bottom:0 !important;
+  display:flex; justify-content:space-around; align-items:center;
+  background:rgba(18,23,42,.85); backdrop-filter:blur(6px);
+  border-top:1px solid var(--border);
+  overflow:visible;
+}
+#tabbar::after{
+  content:""; position:absolute; left:0; right:0;
+  bottom: calc(-1 * env(safe-area-inset-bottom));
+  height: env(safe-area-inset-bottom);
+  background: inherit; border-top: 1px solid var(--border);
+  pointer-events: none;
+}
+#app{ padding-bottom: var(--tabbar-h) !important; }
+#tabbar .tab{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:var(--tabbar-h); min-width:64px; gap:4px; font-size:13px;
+}
+#tabbar .tab svg, #tabbar .tab img{ width:22px; height:22px; display:block; }
+
+/* 3) Bottom sheet: keep controls above home indicator */
+.sheet{
+  padding-bottom: max(16px, env(safe-area-inset-bottom) + 16px) !important;
+}
+
+/* 4) Cosmetic: remove stray marker in task summary row */
+#todayTasks .item .summary::before,
+#todayTasks .item .summary::after{ content:none !important; }
+#todayTasks .item .summary, #todayTasks .item .summary *{ outline:0 !important; }
