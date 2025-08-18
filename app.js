@@ -836,8 +836,27 @@ function openTheme(){
   $('#btnThemeReset').onclick=()=>{ state.theme=JSON.parse(JSON.stringify(defaultState.theme)); applyTheme(state.theme); save(); Object.keys(state.theme).forEach(k=>{ const el=$('#clr_'+k); if(el) el.value=state.theme[k]; }); alert('Theme reset'); };
 }
 function openBackground(){
-  const curBG   = state.theme.bg || '#0b0f1a';
+  // Defensive: if the drawer is still open, close it first so the sheet is visible above content.
+  try{
+    const dr = $('#drawer'), bd = $('#backdrop');
+    if (dr && dr.classList.contains('open')) {
+      dr.classList.remove('open');
+      if (bd) bd.style.display = 'none';
+    }
+  }catch(_){} // ignore if not present
+
+  const t = state.theme || (state.theme = {});
+  const curBG   = (typeof t.bg === 'string' && t.bg) ? t.bg : '#0b0f1a';
   const curGrad = curBG.startsWith('linear-gradient') ? curBG : '';
+
+  // Keep CSS variables in sync (handles --bg AND --bg-image).
+  function applyBGVars(){
+    const r = document.documentElement;
+    r.style.setProperty('--bg', t.bg || '#0b0f1a');
+    r.style.setProperty('--bg-image', t.bgImage ? `url(${t.bgImage})` : 'none');
+  }
+
+  // Sheet UI
   openSheet(`
     <div class="row-between">
       <h3>Background</h3>
@@ -876,48 +895,52 @@ function openBackground(){
 
   $('#closeSheet').onclick = closeSheet;
 
-  // Presets
+  // 1) Presets
   $$('#bgPresets .chip').forEach(b=>{
     b.onclick = ()=>{
-      state.theme.bg = b.dataset.bg;
-      state.theme.bgImage = '';
-      save(); applyTheme(state.theme);
+      t.bg = b.dataset.bg;
+      t.bgImage = '';         // clear photo when using color/gradient
+      save(); applyTheme(t);  // keep your generic theming
+      applyBGVars();          // ALSO update --bg-image
     };
   });
 
-  // Solid color live preview
+  // 2) Solid color live preview
   $('#bgColor').oninput = e=>{
-    state.theme.bg = e.target.value;
-    state.theme.bgImage = '';
-    save(); applyTheme(state.theme);
+    t.bg = e.target.value;
+    t.bgImage = '';
+    save(); applyTheme(t); applyBGVars();
   };
 
-  // Gradient apply on change/blur
+  // 3) Gradient apply on change/blur
   $('#bgGrad').addEventListener('change', e=>{
-    const v = e.target.value.trim();
-    if (v) { state.theme.bg = v; state.theme.bgImage=''; save(); applyTheme(state.theme); }
+    const v = (e.target.value || '').trim();
+    if (v && v.startsWith('linear-')) {
+      t.bg = v; t.bgImage = '';
+      save(); applyTheme(t); applyBGVars();
+    }
   });
 
-  // Local photo → dataURL
+  // 4) Local photo → dataURL
   $('#bgImage').onchange = e=>{
-    const f = e.target.files?.[0];
+    const f = e.target.files && e.target.files[0];
     if(!f) return;
     const rd = new FileReader();
     rd.onload = ()=>{
-      state.theme.bgImage = rd.result;
-      save(); applyTheme(state.theme);
+      t.bgImage = String(rd.result || '');
+      save(); applyTheme(t); applyBGVars();
     };
     rd.readAsDataURL(f);
   };
 
-  // Reset to stock
+  // 5) Reset to stock
   $('#bgReset').onclick = ()=>{
-    state.theme.bg = '#0b0f1a';
-    state.theme.bgImage = '';
-    save(); applyTheme(state.theme);
+    t.bg = '#0b0f1a';
+    t.bgImage = '';
+    save(); applyTheme(t); applyBGVars();
   };
 
-  // Just close; everything already saved
+  // 6) Apply = just close; everything already saved live
   $('#bgApply').onclick = closeSheet;
 }
 function openBackup(){
@@ -965,6 +988,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     if(name==='titles') openTitles();
     if(name==='rewards') openRewards();
     if(name==='theme') openTheme();
+    if(name==='background') openBackground();
     if(name==='backup') openBackup();
     if(name==='settings') openSettings();
   });
