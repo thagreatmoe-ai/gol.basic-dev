@@ -43,14 +43,19 @@ function ensureAudio(){
     if(AC){ _audioCtx = new AC(); }
   }
 }
-function beep(durationMs=120, freq=880, type='sine', volume=0.08){
+function beep(durationMs=120, freq=880, type='sine', baseVolume=0.08){
   if(!_audioCtx) return;
+  // Apply global volume (0..1). If 0 → muted.
+  const userVol = Math.max(0, Math.min(1, state?.config?.chimeVolume ?? 0.7));
+  const vol = baseVolume * userVol;
+  if (vol <= 0) return;
+
   const ctx=_audioCtx;
   const osc=ctx.createOscillator();
   const gain=ctx.createGain();
   osc.type=type;
   osc.frequency.value=freq;
-  gain.gain.value=volume;
+  gain.gain.value=vol;
   osc.connect(gain); gain.connect(ctx.destination);
   const now=ctx.currentTime;
   osc.start(now);
@@ -842,6 +847,78 @@ function openTasks(addOnly = false){
     state.tasks.push(t); save(); openTasks(addOnly); renderToday();
   };
 }
+function openQuickLog(){
+  const active = state.tasks.filter(t => isTaskActiveToday(t));
+  if (active.length === 0){
+    openSheet(`<div class="row-between">
+        <h3>Log Task</h3>
+        <button class="btn alt small" id="closeSheet">Close</button>
+      </div>
+      <div class="sub small">No tasks due today. Create one?</div>
+      <div style="margin-top:8px"><button class="btn" id="goMakeTask">+ Task</button></div>
+    `);
+    $('#closeSheet').onclick = closeSheet;
+    $('#goMakeTask').onclick = ()=>{ closeSheet(); openTasks(true); };
+    return;
+  }
+
+  openSheet(`
+    <div class="row-between">
+      <h3>Log Task</h3>
+      <button class="btn alt small" id="closeSheet">Close</button>
+    </div>
+
+    <label class="stack small" style="margin-top:8px">
+      <span>Task</span>
+      <select id="qlTask" class="input">
+        ${active.map(t => `<option value="${t.id}" data-qty="${t.qtyType||'times'}">${t.name}</option>`).join('')}
+      </select>
+    </label>
+
+    <label id="qlAmtRow" class="stack small" style="margin-top:8px; display:none">
+      <span>Amount (<span id="qlUnit">min</span>)</span>
+      <input id="qlAmt" class="input small" type="number" value="10" inputmode="numeric" placeholder="10">
+    </label>
+
+    <div class="row gap8" style="margin-top:10px">
+      <button class="btn" id="qlLogBtn">Log</button>
+      <button class="btn alt" id="qlCancel">Cancel</button>
+    </div>
+  `);
+
+  $('#closeSheet').onclick = closeSheet;
+  $('#qlCancel').onclick = closeSheet;
+
+  const sel = $('#qlTask');
+  const amtRow = $('#qlAmtRow');
+  const unit = $('#qlUnit');
+  const amt = $('#qlAmt');
+
+  function syncAmountUI(){
+    const t = state.tasks.find(x => x.id === sel.value);
+    const qt = t?.qtyType || 'times';
+    if (qt === 'times'){
+      amtRow.style.display = 'none';
+    }else{
+      amtRow.style.display = 'block';
+      unit.textContent = qt === 'minutes' ? 'min' : 'h';
+      amt.placeholder = qt === 'minutes' ? '10' : '1';
+      if (!(Number(amt.value) > 0)) amt.value = (qt === 'minutes' ? '10' : '1');
+    }
+  }
+  syncAmountUI();
+  sel.onchange = syncAmountUI;
+
+  $('#qlLogBtn').onclick = ()=>{
+    const t = state.tasks.find(x => x.id === sel.value);
+    if (!t) return;
+    const qt = t.qtyType || 'times';
+    const amount = qt === 'times' ? 1 : Number(amt.value || 0);
+    if (qt !== 'times' && !(amount > 0)){ alert('Enter amount'); return; }
+    completeTask(t.id, amount);
+    closeSheet();
+  };
+}
 function openFields(){
   openSheet(`<div class="row-between"><h3>Fields</h3><button class="btn alt small" id="closeSheet">Close</button></div>
     ${state.fields.map(f=>`<div class="item"><div class="grow"><strong>${f.name}</strong><div class="sub small">Level ${f.level}</div></div><button class="btn alt small" data-id="${f.id}">Delete</button></div>`).join('')}`);
@@ -1012,11 +1089,55 @@ function openBackup(){
 }
 function openSettings(){
   openSheet(`<div class="row-between"><h3>Settings</h3><button class="btn alt small" id="closeSheet">Close</button></div>
-    <div class="row gap8"><label class="stack small"><span>Level thresholds (comma-separated)</span><input id="lvlStr" class="input" value="${state.levels.join(', ')}"></label><button class="btn" id="btnLevels">Save Levels</button></div>
-    <div class="row gap8" style="margin-top:8px"><label class="stack small"><span>Daily stamina limit (points)</span><input id="stam" class="input small" type="number" value="${state.config.staminaLimit}" inputmode="numeric"></label><label class="stack small"><span>Resistance bonus per hour %</span><input id="rh" class="input small" type="number" value="${state.config.resistHourBonus}" inputmode="numeric"></label></div>`);
+    <div class="row gap8">
+      <label class="stack small"><span>Level thresholds (comma-separated)</span>
+        <input id="lvlStr" class="input" value="${state.levels.join(', ')}">
+      </label>
+      <button class="btn" id="btnLevels">Save Levels</button>
+    </div>
+
+    <div class="row gap8" style="margin-top:8px">
+      <label class="stack small"><span>Daily stamina limit (points)</span>
+        <input id="stam" class="input small" type="number" value="${state.config.staminaLimit}" inputmode="numeric">
+      </label>
+      <label class="stack small"><span>Resistance bonus per hour %</span>
+        <input id="rh" class="input small" type="number" value="${state.config.resistHourBonus}" inputmode="numeric">
+      </label>
+    </div>
+
+    <!-- NEW: chime volume + heads-up toggle -->
+    <div class="row gap8" style="margin-top:8px">
+      <label class="stack small">
+        <span>Session chime volume (%)</span>
+        <input id="chimeVol" class="input small" type="range" min="0" max="100"
+               value="${Math.round((state.config.chimeVolume ?? 0.7)*100)}">
+      </label>
+      <label class="stack small">
+        <span>10-second heads-up</span>
+        <select id="headsUp" class="input small">
+          <option value="on">On</option>
+          <option value="off">Off</option>
+        </select>
+      </label>
+    </div>
+  `);
+
   $('#closeSheet').onclick=closeSheet;
-  $('#btnLevels').onclick=()=>{ const arr=$('#lvlStr').value.split(',').map(s=>Number(s.trim())).filter(Boolean); if(arr.length){ state.levels=arr; save(); alert('Saved'); renderHeader(); } };
+
+  $('#btnLevels').onclick=()=>{
+    const arr=$('#lvlStr').value.split(',').map(s=>Number(s.trim())).filter(Boolean);
+    if(arr.length){ state.levels=arr; save(); alert('Saved'); renderHeader(); }
+  };
+
   $('#rh').onchange=()=>{ state.config.resistHourBonus=Number($('#rh').value||0); save(); };
+
+  // NEW: wire volume + heads-up
+  const v = $('#chimeVol');
+  v.oninput = ()=>{ state.config.chimeVolume = Number(v.value)/100; save(); };
+
+  const hu = $('#headsUp');
+  hu.value = (state.config.prefinishHeadsUp !== false) ? 'on' : 'off';
+  hu.onchange = ()=>{ state.config.prefinishHeadsUp = (hu.value === 'on'); save(); };
 }
 
 // Router / events
@@ -1135,24 +1256,33 @@ function startSession(minutes){
   try{ _audioCtx?.resume?.(); }catch(e){}
   chimeShort();
 
-  timer = setInterval(() => {
-    left--;
-    if (left <= 0){
-      clearInterval(timer);
-      timer = null;
-      if (tb) tb.textContent = 'Session complete — log your task now!';
-      navigator.vibrate?.(200);
-      chimeLong();
+  let warned10 = false;  // add at top of startSession
 
-      // If a toggle UI is present, turn it off
-      const toggle = $('#sessToggle');
-      if (toggle) toggle.checked = false;
+timer = setInterval(() => {
+  left--;
 
-    } else {
-      const m = Math.floor(left/60), s = left % 60;
-      if (tb) tb.textContent = `Time left ${m}:${String(s).padStart(2,'0')}`;
-    }
-  }, 1000);
+  // one-time heads-up at 10s
+  if (state.config?.prefinishHeadsUp !== false && !warned10 && left === 10){
+    showToast('10 seconds left', 'info');
+    warned10 = true;
+  }
+
+  if (left <= 0){
+    clearInterval(timer);
+    timer = null;
+    if (tb) tb.textContent = 'Session complete — log your task now!';
+    navigator.vibrate?.(200);
+    chimeLong();
+    const toggle = $('#sessToggle');
+    if (toggle) toggle.checked = false;
+
+    // NEW: open quick log sheet
+    openQuickLog();
+  } else {
+    const m = Math.floor(left/60), s = left % 60;
+    if (tb) tb.textContent = `Time left ${m}:${String(s).padStart(2,'0')}`;
+  }
+}, 1000);
 
   // If a toggle label exists, update it
   const lab = $('#sessToggleText');
