@@ -903,3 +903,5 @@ body, #app, #views, .view, main{
 .top-split{
   margin-top: 8px !important;        /* keep today layout tight */
 }
+/* History view: slightly reduced side margins for a fuller look */
+#view-history .card.wide { margin-left: 6px; margin-right: 6px; }
