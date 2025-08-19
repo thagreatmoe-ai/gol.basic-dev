@@ -245,9 +245,10 @@
 <a class="tab" data-view="history">
   <!-- History / clock icon -->
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path fill="currentColor"
-      d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 11h5v-2h-4V7h-2v6Z"/>
-  </svg>
+  <!-- Clock ring + inner cutout + hour/minute hand -->
+  <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
+    d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm1 3h-2v6h6v-2h-4V7Z"/>
+</svg>
   <span>History</span>
 </a>
 
