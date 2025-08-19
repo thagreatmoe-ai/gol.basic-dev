@@ -1186,26 +1186,50 @@ if (startBtn && stopBtn){
   stopBtn.addEventListener('click', () => stopSession());
 }
 
-// Bind toggle if it exists
-const sessToggle = $('#sessToggle');
-if (sessToggle){
-  // initialize label if provided
-  const lab = $('#sessToggleText');
-  if (lab && !sessToggle.checked) lab.textContent = 'Session stopped.';
+// Robust toggle wiring via event delegation + safer minute parsing
 
-  sessToggle.addEventListener('change', () => {
-    if (sessToggle.checked){
-      const cm = Number($('#customMin')?.value || sessM);
-      if (!(cm > 0)){
-        sessToggle.checked = false;
-        return;
-      }
-      startSession(cm);
-    } else {
-      stopSession();
-    }
-  });
+// Helper: read minutes from input or fall back to preset
+function readMinutes(){
+  const raw = ($('#customMin')?.value || '').trim();
+  const n = parseInt(raw, 10);
+  return (Number.isFinite(n) && n > 0) ? n : sessM;
 }
+
+// Initialize label if toggle exists (doesn't matter when it mounts)
+const initSessLabel = ()=>{
+  const lab = $('#sessToggleText');
+  if (lab) lab.textContent = 'Session stopped.';
+};
+initSessLabel();
+
+// Delegate change events so it still works if the toggle is re-rendered
+document.body.addEventListener('change', (ev)=>{
+  const t = ev.target;
+  if (!t || t.id !== 'sessToggle') return;
+
+  if (t.checked){
+    const cm = readMinutes();
+    if (!(cm > 0)){
+      t.checked = false;
+      return;
+    }
+    startSession(cm);
+  } else {
+    stopSession();
+  }
+});
+
+// (Nice to have) Pressing Enter in the minutes field starts the session
+$('#customMin')?.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter'){
+    const toggle = $('#sessToggle');
+    const cm = readMinutes();
+    if (cm > 0){
+      if (toggle) toggle.checked = true;    // keep UI in sync
+      startSession(cm);
+    }
+  }
+});
 
   // Prestige
   $('#btnPrestige')?.addEventListener('click', ()=>{
