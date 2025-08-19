@@ -121,6 +121,7 @@ function progressForRange(t,s,e){
 
 function applyDailyPenalties(day){
   state.tasks.forEach(t=>{
+    if(state.level < (t.levelReq||1)) return; // skip penalties for locked (higher-level) tasks
     if(!isTaskActiveOnDate(t,day)) return;
     if(t.freq!=='daily' && t.freq!=='once') return;
     if(wasSkippedOrPostponed(t.id,day,day)) return;
@@ -151,6 +152,7 @@ function applyDailyPenalties(day){
 function applyWeeklyPenalties(day){
   const [s,e]=rangeWeek(day);
   state.tasks.forEach(t=>{
+    if(state.level < (t.levelReq||1)) return; // skip penalties for locked (higher-level) tasks
     if(t.freq!=='weekly' && t.freq!=='custom') return;
     if(wasSkippedOrPostponed(t.id,s,e)) return;
     const pr=progressForRange(t,s,e);
@@ -174,6 +176,7 @@ function applyWeeklyPenalties(day){
 function applyMonthlyPenalties(day){
   const [s,e]=rangeMonth(day);
   state.tasks.forEach(t=>{
+    if(state.level < (t.levelReq||1)) return; // skip penalties for locked (higher-level) tasks
     if(t.freq!=='monthly') return;
     if(wasSkippedOrPostponed(t.id,s,e)) return;
     const pr=progressForRange(t,s,e);
