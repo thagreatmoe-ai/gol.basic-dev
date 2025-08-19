@@ -35,6 +35,31 @@ function showToast(msg, type = 'ok'){
   _toastTimer = setTimeout(()=> el.classList.remove('show'), 1600);
 }
 
+// --- Tiny audio helper (short/long beeps) ---
+let _audioCtx;
+function ensureAudio(){
+  if(!_audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC){ _audioCtx = new AC(); }
+  }
+}
+function beep(durationMs=120, freq=880, type='sine', volume=0.08){
+  if(!_audioCtx) return;
+  const ctx=_audioCtx;
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.type=type;
+  osc.frequency.value=freq;
+  gain.gain.value=volume;
+  osc.connect(gain); gain.connect(ctx.destination);
+  const now=ctx.currentTime;
+  osc.start(now);
+  osc.stop(now + durationMs/1000);
+}
+// wrappers
+function chimeShort(){ beep(120, 880); }           // quick ping
+function chimeLong(){ beep(600, 520, 'sine', 0.1); } // longer, lower tone
+
 // Defaults
 const DEFAULT_LEVELS = [200,300,400,500,600,800,1000,1200,1400,1600,1900,2200,2500];
 // defaults (snippet) — add bgImage to theme
@@ -1085,39 +1110,45 @@ $('#btnAddReward')?.addEventListener('click', ()=>{
   if (costEl) costEl.value = '10';
   if (typeEl) typeEl.value = 'irl';
 });
-  // Focus session (toggle only; no preset buttons)
-  let timer=null, left=0;
-  const sessToggle = $('#sessToggle');
-  if(sessToggle){
-    sessToggle.addEventListener('change', ()=>{
-      if(sessToggle.checked){
-        const cm = Number($('#customMin')?.value || 0);
-        if (cm <= 0){ sessToggle.checked = false; return; }
-        left = cm * 60;
-        clearInterval(timer);
-        const label = $('#sessToggleText'); if(label) label.textContent = 'On';
-        const tb = $('#timerBox'); if(tb) tb.textContent = `Session ${cm}m started…`;
-        timer = setInterval(()=>{
-          left--;
-          if(left <= 0){
-            clearInterval(timer); timer=null;
-            if($('#timerBox')) $('#timerBox').textContent='Session complete — log your task now!';
-            sessToggle.checked = false;
-            const label2 = $('#sessToggleText'); if(label2) label2.textContent = 'Off';
-            navigator.vibrate?.(200);
-          }else{
-            const m=Math.floor(left/60), s=left%60;
-            if($('#timerBox')) $('#timerBox').textContent=`Time left ${m}:${String(s).padStart(2,'0')}`;
-          }
-        }, 1000);
-      }else{
-        clearInterval(timer); timer=null;
-        if($('#timerBox')) $('#timerBox').textContent='Session stopped.';
-        const label = $('#sessToggleText'); if(label) label.textContent = 'Off';
-        navigator.vibrate?.(50);
-      }
-    });
-  }
+  // Focus session
+let sessM=25, timer=null, left=0;
+$$('.sess').forEach(b=> b.onclick=()=>{ sessM=Number(b.dataset.m); $('#customMin').value=''; });
+
+$('#btnStartSession').onclick=()=>{
+  const cm=Number($('#customMin').value||sessM);
+  if(cm<=0) return;
+  left=cm*60;
+  clearInterval(timer);
+  $('#timerBox').textContent=`Session ${cm}m started…`;
+
+  // NEW: unlock audio on user gesture + short chime
+  ensureAudio();
+  try{ _audioCtx?.resume?.(); }catch(e){}
+  chimeShort();
+
+  timer=setInterval(()=>{
+    left--;
+    if(left<=0){
+      clearInterval(timer);
+      $('#timerBox').textContent='Session complete — log your task now!';
+      navigator.vibrate?.(200);
+      // NEW: long chime at end
+      chimeLong();
+    }else{
+      const m=Math.floor(left/60), s=left%60;
+      $('#timerBox').textContent=`Time left ${m}:${String(s).padStart(2,'0')}`;
+    }
+  },1000);
+};
+
+$('#btnStopSession').onclick=()=>{
+  clearInterval(timer);
+  timer=null;
+  $('#timerBox').textContent='Session stopped.';
+  navigator.vibrate?.(50);
+  // (optional) play a tiny beep here too:
+  // ensureAudio(); try{ _audioCtx?.resume?.(); }catch(e){}; chimeShort();
+};
 
   // Prestige
   $('#btnPrestige')?.addEventListener('click', ()=>{
