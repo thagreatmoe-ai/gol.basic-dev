@@ -140,15 +140,21 @@
             </div>
           </div>
         </div>
-
-        <div class="card">
-          <h3>History & Undo (7 days)</h3>
-          <table class="table" id="histTable">
-            <thead><tr><th>Date</th><th>Task</th><th>Base</th><th>Final</th><th>Tokens</th><th>Flags</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
       </section>
+
+<section id="view-history" class="view">
+  <div class="card wide">
+    <h3>History & Undo (7 days)</h3>
+    <table class="table" id="histTable">
+      <thead>
+        <tr>
+          <th>Date</th><th>Task</th><th>Base</th><th>Final</th><th>Tokens</th><th>Flags</th><th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
 
       <!-- Profile view ------------------------------------------------->
       <section id="view-profile" class="view">
@@ -235,6 +241,15 @@
         </svg>
         <span>Stats</span>
       </a>
+
+<a class="tab" data-view="history">
+  <!-- History / clock icon -->
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path fill="currentColor"
+      d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 11h5v-2h-4V7h-2v6Z"/>
+  </svg>
+  <span>History</span>
+</a>
 
       <a class="tab" data-view="profile" aria-label="Profile">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
