@@ -1110,45 +1110,102 @@ $('#btnAddReward')?.addEventListener('click', ()=>{
   if (costEl) costEl.value = '10';
   if (typeEl) typeEl.value = 'irl';
 });
-  // Focus session
-let sessM=25, timer=null, left=0;
-$$('.sess').forEach(b=> b.onclick=()=>{ sessM=Number(b.dataset.m); $('#customMin').value=''; });
+  // Focus session — works with Start/Stop buttons OR a toggle switch
+let sessM = 25, timer = null, left = 0;
 
-$('#btnStartSession').onclick=()=>{
-  const cm=Number($('#customMin').value||sessM);
-  if(cm<=0) return;
-  left=cm*60;
+// Optional preset buttons (25m / 30m / 50m)
+$$('.sess').forEach(b => b.onclick = () => {
+  sessM = Number(b.dataset.m);
+  const cmEl = $('#customMin');
+  if (cmEl) cmEl.value = '';
+});
+
+function startSession(minutes){
+  const cm = Number(minutes || 0);
+  if (!(cm > 0)) return;
+
+  left = cm * 60;
   clearInterval(timer);
-  $('#timerBox').textContent=`Session ${cm}m started…`;
 
-  // NEW: unlock audio on user gesture + short chime
+  const tb = $('#timerBox');
+  if (tb) tb.textContent = `Session ${cm}m started…`;
+
+  // enable audio + short chime
   ensureAudio();
   try{ _audioCtx?.resume?.(); }catch(e){}
   chimeShort();
 
-  timer=setInterval(()=>{
+  timer = setInterval(() => {
     left--;
-    if(left<=0){
+    if (left <= 0){
       clearInterval(timer);
-      $('#timerBox').textContent='Session complete — log your task now!';
+      timer = null;
+      if (tb) tb.textContent = 'Session complete — log your task now!';
       navigator.vibrate?.(200);
-      // NEW: long chime at end
       chimeLong();
-    }else{
-      const m=Math.floor(left/60), s=left%60;
-      $('#timerBox').textContent=`Time left ${m}:${String(s).padStart(2,'0')}`;
-    }
-  },1000);
-};
 
-$('#btnStopSession').onclick=()=>{
+      // If a toggle UI is present, turn it off
+      const toggle = $('#sessToggle');
+      if (toggle) toggle.checked = false;
+
+    } else {
+      const m = Math.floor(left/60), s = left % 60;
+      if (tb) tb.textContent = `Time left ${m}:${String(s).padStart(2,'0')}`;
+    }
+  }, 1000);
+
+  // If a toggle label exists, update it
+  const lab = $('#sessToggleText');
+  if (lab) lab.textContent = 'Session running…';
+}
+
+function stopSession(message = 'Session stopped.'){
   clearInterval(timer);
-  timer=null;
-  $('#timerBox').textContent='Session stopped.';
+  timer = null;
+  left = 0;
+
+  const tb = $('#timerBox');
+  if (tb) tb.textContent = message;
+
+  const lab = $('#sessToggleText');
+  if (lab) lab.textContent = 'Session stopped.';
+
   navigator.vibrate?.(50);
-  // (optional) play a tiny beep here too:
-  // ensureAudio(); try{ _audioCtx?.resume?.(); }catch(e){}; chimeShort();
-};
+}
+
+// Bind Start/Stop buttons if they exist
+const startBtn = $('#btnStartSession');
+const stopBtn  = $('#btnStopSession');
+
+if (startBtn && stopBtn){
+  startBtn.addEventListener('click', () => {
+    const cm = Number($('#customMin')?.value || sessM);
+    if (cm <= 0) return;
+    startSession(cm);
+  });
+  stopBtn.addEventListener('click', () => stopSession());
+}
+
+// Bind toggle if it exists
+const sessToggle = $('#sessToggle');
+if (sessToggle){
+  // initialize label if provided
+  const lab = $('#sessToggleText');
+  if (lab && !sessToggle.checked) lab.textContent = 'Session stopped.';
+
+  sessToggle.addEventListener('change', () => {
+    if (sessToggle.checked){
+      const cm = Number($('#customMin')?.value || sessM);
+      if (!(cm > 0)){
+        sessToggle.checked = false;
+        return;
+      }
+      startSession(cm);
+    } else {
+      stopSession();
+    }
+  });
+}
 
   // Prestige
   $('#btnPrestige')?.addEventListener('click', ()=>{
