@@ -143,7 +143,12 @@ function monthIndex(d){ const dt=new Date(d); return dt.getFullYear()*12 + dt.ge
 function rangeWeek(d){ const dt=new Date(d); const w=(dt.getDay()+6)%7; const s=new Date(dt); s.setDate(dt.getDate()-w); const e=new Date(s); e.setDate(s.getDate()+6); return [s.toISOString().slice(0,10), e.toISOString().slice(0,10)]; }
 function rangeMonth(d){ const dt=new Date(d); const s=new Date(dt.getFullYear(),dt.getMonth(),1); const e=new Date(dt.getFullYear(),dt.getMonth()+1,0); return [s.toISOString().slice(0,10), e.toISOString().slice(0,10)]; }
 function wasSkippedOrPostponed(id,s,e){
-  return state.history.some(h=>h.taskId===id && h.date>=s && h.date<=e && (h.flags||[]).some(f=>f==='skip'||f==='postpone'));
+  // also treat manual "failed" as handled for this period
+  return state.history.some(h =>
+    h.taskId===id &&
+    h.date>=s && h.date<=e &&
+    (h.flags||[]).some(f => f==='skip' || f==='postpone' || f==='failed')
+  );
 }
 function tokenRewardFor(t){ return Number(t.tokenReward ?? Math.floor((t.points||0)/5)); }
 function penaltyFor(t){ return tokenRewardFor(t)*3; }
@@ -405,29 +410,38 @@ function updateXpStrip(){
   if (el) el.style.width = pct + '%';
 }
 function latestStatusFor(t){
-  const d=todayKey();
-  const row=state.history.slice().reverse().find(h=>h.taskId===t.id && h.date===d && (h.flags||[]).some(f=>f==='skip'||f==='postpone'));
+  const d = todayKey();
+  const row = state.history.slice().reverse().find(h =>
+    h.taskId===t.id && h.date===d &&
+    (h.flags||[]).some(f => f==='skip' || f==='postpone' || f==='failed')
+  );
   if(!row) return null;
-  return (row.flags||[]).includes('skip')?'skip':'postpone';
+  if((row.flags||[]).includes('failed'))   return 'failed';
+  if((row.flags||[]).includes('skip'))     return 'skip';
+  if((row.flags||[]).includes('postpone')) return 'postpone';
+  return null;
 }
 
 function renderTaskCard({t, p, status}){
   const el = document.createElement('div');
   el.className = 'item'
-    + (p.done ? ' done' : '')
-    + (status==='skip' ? ' skipped' : '')
-    + (status==='postpone' ? ' postponed' : '');
+  + (p.done ? ' done' : '')
+  + (status==='skip' ? ' skipped' : '')
+  + (status==='postpone' ? ' postponed' : '')
+  + (status==='failed' ? ' failed' : '');
+
+const canAct = !(p.done || status==='skip' || status==='postpone' || status==='failed');
 
   const unitTxt = (t.qtyType==='minutes'?'min':(t.qtyType==='hours'?'h':'times'));
-  const tokensUnit = Math.floor((t.points||0)/5);
-  const penaltyTok = tokensUnit * 3;
+  const tokensUnit = tokenRewardFor(t);
+const penaltyTok = penaltyFor(t);
   const fieldName = getField(t.fieldId)?.name || '—';
-  const canAct = !(p.done || status==='skip' || status==='postpone');
 
   const badge =
-    p.done ? '<span class="badge success">Completed</span>' :
-    status==='skip' ? '<span class="badge skip">Skipped</span>' :
-    status==='postpone' ? '<span class="badge postpone">Postponed</span>' : '';
+  p.done ? '<span class="badge success">Completed</span>' :
+  status==='skip' ? '<span class="badge skip">Skipped</span>' :
+  status==='postpone' ? '<span class="badge postpone">Postponed</span>' :
+  status==='failed' ? '<span class="badge danger">Failed</span>' : '';
 
   const progressPct = p.target ? Math.min(100, (p.val/p.target*100)) : 0;
 
@@ -455,10 +469,11 @@ function renderTaskCard({t, p, status}){
         <label class="stack small" style="display:flex;flex-direction:column;gap:6px;">
           <span style="font-size:var(--small);color:var(--muted)">Action</span>
           <select class="input small statusSel" data-id="${t.id}">
-            <option value="done">Done</option>
-            <option value="skip">Skip</option>
-            <option value="postpone">Postpone</option>
-          </select>
+  <option value="done">Done</option>
+  <option value="skip">Skip</option>
+  <option value="postpone">Postpone</option>
+  <option value="failed">Failed</option>
+</select>
         </label>
 
         ${ t.qtyType==='times' ? '' : `
@@ -491,7 +506,8 @@ function renderTaskCard({t, p, status}){
         completeTask(t.id, amt);
       }
     }else if(sel==='skip'){ markStatus(t.id,'skip'); }
-     else if(sel==='postpone'){ markStatus(t.id,'postpone'); }
+ else if(sel==='postpone'){ markStatus(t.id,'postpone'); }
+ else if(sel==='failed'){ markStatus(t.id,'failed'); }
   };
 
   const u = el.querySelector('.undoOne');
@@ -517,16 +533,17 @@ function renderToday(){
   const list=$('#todayTasks'); if(!list) return;
   list.innerHTML='';
   const items=state.tasks.filter(t=>isTaskActiveToday(t));
-  const A=[], S=[], P=[], D=[];
-  items.forEach(t=>{
-    const p=progressNow(t), status=latestStatusFor(t);
-    const d={t,p,status};
-    if(status==='skip') S.push(d);
-    else if(status==='postpone') P.push(d);
-    else if(p.done) D.push(d);
-    else A.push(d);
-  });
-  [A,S,P,D].forEach(g=>g.forEach(d=>list.appendChild(renderTaskCard(d))));
+  const A=[], F=[], S=[], P=[], D=[];
+items.forEach(t=>{
+  const p=progressNow(t), status=latestStatusFor(t);
+  const d={t,p,status};
+  if(status==='failed') F.push(d);
+  else if(status==='skip') S.push(d);
+  else if(status==='postpone') P.push(d);
+  else if(p.done) D.push(d);
+  else A.push(d);
+});
+[A,F,S,P,D].forEach(g=>g.forEach(d=>list.appendChild(renderTaskCard(d))));
   if(items.length===0){
     const e=document.createElement('div'); e.className='sub small'; e.textContent='No tasks due today.'; list.appendChild(e);
   }
@@ -738,11 +755,75 @@ function completeTask(taskId, amountOr1){
   renderAll();
   showToast('Task logged', 'ok');
 }
+// helper: remove any "done" entries for THIS TASK today (undo safely)
+function _revertTodaysDoneForTask(t){
+  const d = todayKey();
+  for(let i = state.history.length - 1; i >= 0; i--){
+    const h = state.history[i];
+    if(h.taskId===t.id && h.date===d && (h.final||0) > 0){
+      const tokenDelta = h.tokens || 0; // positive earned tokens
+      if(tokenDelta > 0 && (state.tokens - tokenDelta) < 0){
+        const need = tokenDelta - state.tokens;
+        autoRefundPurchases(need);
+        if(state.tokens - tokenDelta < 0){
+          // can't safely undo this entry; skip it
+          continue;
+        }
+      }
+      adjustMainXP(-h.final);
+      adjustFieldXP(h.fieldId, -h.final);
+      state.tokens -= tokenDelta;
+      state.history.splice(i,1);
+    }
+  }
+}
+
 function markStatus(taskId, kind){
-  const t=state.tasks.find(x=>x.id===taskId); if(!t) return;
-  state.history.push({id:uid(), date:todayKey(), taskId:t.id, name:`${kind==='skip'?'Skipped':'Postponed'}: ${t.name}`, base:0, final:0, flags:[kind], fieldId:t.fieldId, unit:t.qtyType, amount:0, tokens:0});
-  save();
-  renderAll();
+  const t = state.tasks.find(x=>x.id===taskId); if(!t) return;
+
+  if(kind === 'failed'){
+    // 1) ensure task is "undone" for today
+    _revertTodaysDoneForTask(t);
+
+    // 2) apply penalties immediately (same math as rollover)
+    const lossTok = penaltyFor(t);
+    const xpLoss  = (Number(t.points)||0) * 2;
+
+    adjustMainXP(-xpLoss);
+    adjustFieldXP(t.fieldId, -xpLoss);
+
+    const spent = lossTok > 0 ? spendTokensSafe(lossTok) : 0;
+
+    state.history.push({
+      id: uid(),
+      date: todayKey(),
+      taskId: t.id,
+      name: `Failed: ${t.name}`,
+      base: 0,
+      final: -xpLoss,
+      tokens: -spent,
+      flags: ['penalty','failed'],
+      fieldId: t.fieldId,
+      unit: t.qtyType,
+      amount: 0
+    });
+
+    save(); renderAll();
+    showToast('Marked failed — penalties applied', 'danger');
+    return;
+  }
+
+  // skip / postpone (no penalties)
+  state.history.push({
+    id: uid(),
+    date: todayKey(),
+    taskId: t.id,
+    name: `${kind==='skip'?'Skipped':'Postponed'}: ${t.name}`,
+    base: 0, final: 0, tokens: 0,
+    flags: [kind],
+    fieldId: t.fieldId, unit: t.qtyType, amount: 0
+  });
+  save(); renderAll();
   showToast('Undone', 'info');
 }
 function undoRecentForTask(taskId){
