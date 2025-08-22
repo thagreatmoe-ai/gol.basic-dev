@@ -178,21 +178,23 @@ function applyDailyPenalties(day){
       const lossTok = penaltyFor(t);             // tokens to try to lose
       const xpLoss  = (Number(t.points)||0) * 2; // lose 2 × base points
 
-      // apply XP loss (affects main + field)
-      adjustMainXP(-xpLoss);
-      adjustFieldXP(t.fieldId, -xpLoss);
+      // apply XP loss (affects main + field) — capture actual applied amounts
+const appliedMain  = adjustMainXP(-xpLoss);     // negative or 0
+const appliedField = adjustFieldXP(t.fieldId, -xpLoss); // negative or 0
 
-      // apply token loss safely (never below 0)
-      const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
+// apply token loss safely (never below 0)
+const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
 
-      // record penalty in history with negative final and actual token spend
-      state.history.push({
-        id: uid(), date: day, taskId: t.id, name: `Penalty: ${t.name}`,
-        base: 0, final: -xpLoss,
-        flags: ['penalty','daily'],
-        fieldId: t.fieldId, unit: t.qtyType, amount: 0,
-        tokens: -spent
-      });
+// record penalty using the actual applied amounts
+state.history.push({
+  id: uid(), date: day, taskId: t.id, name: `Penalty: ${t.name}`,
+  base: 0,
+  final: appliedMain,            // e.g., -5 (not -20)
+  fieldFinal: appliedField,      // store field delta separately
+  flags: ['penalty','daily'],
+  fieldId: t.fieldId, unit: t.qtyType, amount: 0,
+  tokens: -spent
+});
     }
   });
   save();
@@ -208,17 +210,17 @@ function applyWeeklyPenalties(day){
       const lossTok = penaltyFor(t);
       const xpLoss  = (Number(t.points)||0) * 2;
 
-      adjustMainXP(-xpLoss);
-      adjustFieldXP(t.fieldId, -xpLoss);
-
-      // safe token deduction
-      const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
-
-      state.history.push({
-        id:uid(),date:e,taskId:t.id,name:`Penalty (week): ${t.name}`,
-        base:0,final:-xpLoss,flags:['penalty','week'],
-        fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-spent
-      });
+      const appliedMain  = adjustMainXP(-xpLoss);
+const appliedField = adjustFieldXP(t.fieldId, -xpLoss);
+const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
+state.history.push({
+  id:uid(),date:e,taskId:t.id,name:`Penalty (week): ${t.name}`,
+  base:0,
+  final: appliedMain,
+  fieldFinal: appliedField,
+  flags:['penalty','week'],
+  fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-spent
+});
     }
   });
   save();
@@ -234,17 +236,17 @@ function applyMonthlyPenalties(day){
       const lossTok = penaltyFor(t);
       const xpLoss  = (Number(t.points)||0) * 2;
 
-      adjustMainXP(-xpLoss);
-      adjustFieldXP(t.fieldId, -xpLoss);
-
-      // safe token deduction
-      const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
-
-      state.history.push({
-        id:uid(),date:e,taskId:t.id,name:`Penalty (month): ${t.name}`,
-        base:0,final:-xpLoss,flags:['penalty','month'],
-        fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-spent
-      });
+      const appliedMain  = adjustMainXP(-xpLoss);
+const appliedField = adjustFieldXP(t.fieldId, -xpLoss);
+const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
+state.history.push({
+  id:uid(),date:e,taskId:t.id,name:`Penalty (month): ${t.name}`,
+  base:0,
+  final: appliedMain,
+  fieldFinal: appliedField,
+  flags:['penalty','month'],
+  fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-spent
+});
     }
   });
   save();
@@ -786,27 +788,29 @@ function markStatus(taskId, kind){
     _revertTodaysDoneForTask(t);
 
     // 2) apply penalties immediately (same math as rollover)
-    const lossTok = penaltyFor(t);
-    const xpLoss  = (Number(t.points)||0) * 2;
+const lossTok = penaltyFor(t);
+const xpLoss  = (Number(t.points)||0) * 2;
 
-    adjustMainXP(-xpLoss);
-    adjustFieldXP(t.fieldId, -xpLoss);
+// capture actual applied deltas
+const appliedMain  = adjustMainXP(-xpLoss);
+const appliedField = adjustFieldXP(t.fieldId, -xpLoss);
 
-    const spent = lossTok > 0 ? spendTokensSafe(lossTok) : 0;
+const spent = lossTok > 0 ? spendTokensSafe(lossTok) : 0;
 
-    state.history.push({
-      id: uid(),
-      date: todayKey(),
-      taskId: t.id,
-      name: `Failed: ${t.name}`,
-      base: 0,
-      final: -xpLoss,
-      tokens: -spent,
-      flags: ['penalty','failed'],
-      fieldId: t.fieldId,
-      unit: t.qtyType,
-      amount: 0
-    });
+state.history.push({
+  id: uid(),
+  date: todayKey(),
+  taskId: t.id,
+  name: `Failed: ${t.name}`,
+  base: 0,
+  final: appliedMain,       // actual applied (likely -5 in your example)
+  fieldFinal: appliedField, // for precise field undo
+  tokens: -spent,
+  flags: ['penalty','failed'],
+  fieldId: t.fieldId,
+  unit: t.qtyType,
+  amount: 0
+});
 
     save(); renderAll();
     showToast('Marked failed — penalties applied', 'danger');
@@ -848,7 +852,8 @@ function undoRecentForTask(taskId){
 
   if(h.final !== 0){
   adjustMainXP(-h.final);
-  adjustFieldXP(h.fieldId, -h.final);
+  const df = (h.fieldFinal != null) ? -h.fieldFinal : -h.final;
+  adjustFieldXP(h.fieldId, df);
 }
 state.tokens -= tokenDelta;
 
@@ -886,9 +891,9 @@ function undoEntry(id){
   }
 
   if(h.final !== 0){
-  // Works for both earned XP (positive) and penalty XP (negative)
   adjustMainXP(-h.final);
-  adjustFieldXP(h.fieldId, -h.final);
+  const df = (h.fieldFinal != null) ? -h.fieldFinal : -h.final;
+  adjustFieldXP(h.fieldId, df);
 }
   state.tokens -= tokenDelta;
 
