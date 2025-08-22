@@ -86,6 +86,16 @@ const defaultState = {
 };
 let state = Object.assign({}, defaultState, load());
 
+// Normalize today's structure so pointsToday is always a number
+state.day = state.day || { date: todayKey(), resistance: false, pointsToday: 0 };
+
+// Carry over legacy `points` if present, then ensure it’s numeric
+if (state.day.pointsToday == null){
+  state.day.pointsToday = Number(state.day.points || 0);
+}
+// Optional: remove the old key to avoid future confusion
+if ('points' in state.day) delete state.day.points;
+
 // Guard: if previous builds allowed negatives, snap back to 0
 state.tokens = Math.max(0, Number(state.tokens) || 0);
 
@@ -239,40 +249,89 @@ function applyMonthlyPenalties(day){
 function xpReq(l){ return state.levels[l-1] || state.levels.at(-1); }
 function fieldReq(l){ return 200 + (l-1)*100; }
 function getField(id){ return state.fields.find(f=>f.id===id); }
+// Returns the ACTUAL applied delta (may be less negative when flooring at 0)
 function adjustMainXP(d){
-  if(d>0){
-    state.xp+=d;
-    while(state.level<=state.levels.length && state.xp>=xpReq(state.level)){
-      state.xp-=xpReq(state.level); state.level++;
+  let applied = 0;
+
+  if (d > 0){
+    state.xp += d;
+    applied = d;
+    while (state.level <= state.levels.length && state.xp >= xpReq(state.level)){
+      state.xp -= xpReq(state.level);
+      state.level++;
     }
-  }else if(d<0){
-    let k=-d;
-    while(k>0){
-      if(state.xp>=k){ state.xp-=k; k=0; break; }
-      else{
-        k-=state.xp;
-        if(state.level>1){ state.level--; state.xp=xpReq(state.level)-1; }
-        else{ state.xp=0; k=0; }
+  } else if (d < 0){
+    let k = -d; // amount we want to remove
+    while (k > 0){
+      if (state.xp >= k){
+        state.xp -= k;
+        applied -= k;
+        k = 0;
+        break;
+      } else {
+        // remove what's left at this level
+        applied -= state.xp;
+        k -= state.xp;
+        state.xp = 0;
+
+        if (state.level > 1){
+          state.level--;
+          state.xp = xpReq(state.level) - 1; // step down; next loop will remove further if k > 0
+        } else {
+          // hit floor (L1, 0 XP)
+          k = 0;
+        }
       }
     }
   }
+
+  return applied;
 }
-function adjustFieldXP(id,d){
-  const f=getField(id); if(!f) return;
-  if(d>0){
-    f.xp+=d; while(f.xp>=fieldReq(f.level)){ f.xp-=fieldReq(f.level); f.level++; }
-  }else if(d<0){
-    let k=-d;
-    while(k>0){
-      if(f.xp>=k){ f.xp-=k; k=0; break; }
-      else{
-        k-=f.xp;
-        if(f.level>1){ f.level--; f.xp=fieldReq(f.level)-1; }
-        else{ f.xp=0; k=0; }
+
+function adjustFieldXP(id, d){
+  const f = getField(id); 
+  if (!f) return 0;
+
+  let applied = 0;
+
+  if (d > 0){
+    f.xp += d;
+    applied = d;
+    // level up as needed
+    while (f.xp >= fieldReq(f.level)){
+      f.xp -= fieldReq(f.level);
+      f.level++;
+    }
+  } else if (d < 0){
+    let k = -d; // amount to remove
+    while (k > 0){
+      if (f.xp >= k){
+        f.xp -= k;
+        applied -= k;
+        k = 0;
+        break;
+      } else {
+        // remove what's left at this level
+        applied -= f.xp;
+        k -= f.xp;
+        f.xp = 0;
+
+        if (f.level > 1){
+          f.level--;
+          // mirror the main XP behavior when stepping down a level
+          f.xp = fieldReq(f.level) - 1;
+        } else {
+          // hit the floor (level 1, 0 XP)
+          k = 0;
+        }
       }
     }
   }
+
+  return applied;
 }
+
+ 
 function finalPoints(base){
   const a=1+(state.titles.filter(t=>t.scope==='always').reduce((x,y)=>x+y.boost,0))/100;
   const r=state.day.resistance?1+state.config.resistHourBonus/100:1;
@@ -1426,13 +1485,4 @@ function openSheet(html){ const s=$('#sheet'); s.innerHTML=html; s.classList.add
 function closeSheet(){ $('#sheet').classList.remove('open'); document.body.classList.remove('addMode'); }
 function _toHexOrDefault(v){
   return (typeof v==='string' && v.startsWith('#') && (v.length===7||v.length===4)) ? v : '#0b0f1a';
-}
-function updateXpStrip(){
-  const bar = document.querySelector('#xpStrip .fill');
-  if (!bar) return;
-
-  // Assume state.xp is current XP within the level and state.levels holds per-level caps
-  const needed = state.levels?.[state.level - 1] || 1;
-  const pct = Math.max(0, Math.min(100, (state.xp / needed) * 100));
-  bar.style.width = pct + '%';
 }
