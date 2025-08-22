@@ -86,6 +86,9 @@ const defaultState = {
 };
 let state = Object.assign({}, defaultState, load());
 
+// Guard: if previous builds allowed negatives, snap back to 0
+state.tokens = Math.max(0, Number(state.tokens) || 0);
+
 applyTheme(state.theme);
 rolloverIfNeeded();
 updateXpStrip();   // <— add this line
@@ -151,79 +154,83 @@ function progressForRange(t,s,e){
 
 function applyDailyPenalties(day){
   state.tasks.forEach(t=>{
-    if(state.level < (t.levelReq||1)) return; // skip penalties for locked (higher-level) tasks
+    if(state.level < (t.levelReq||1)) return;
     if(!isTaskActiveOnDate(t,day)) return;
     if(t.freq!=='daily' && t.freq!=='once') return;
     if(wasSkippedOrPostponed(t.id,day,day)) return;
     const pr=progressForRange(t,day,day);
     if(!pr.done){
-  const lossTok = penaltyFor(t);             // tokens lost (unchanged)
-  const xpLoss  = (Number(t.points)||0) * 2; // NEW: lose 2 × base points
+      const lossTok = penaltyFor(t);             // tokens to try to lose
+      const xpLoss  = (Number(t.points)||0) * 2; // lose 2 × base points
 
-  // apply XP loss (affects main + field)
-  adjustMainXP(-xpLoss);
-  adjustFieldXP(t.fieldId, -xpLoss);
+      // apply XP loss (affects main + field)
+      adjustMainXP(-xpLoss);
+      adjustFieldXP(t.fieldId, -xpLoss);
 
-  // apply token loss
-  if(lossTok>0) state.tokens -= lossTok;
+      // apply token loss safely (never below 0)
+      const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
 
-  // record penalty in history with negative final (so undo works)
-  state.history.push({
-    id: uid(), date: day, taskId: t.id, name: `Penalty: ${t.name}`,
-    base: 0, final: -xpLoss,                    // <-- negative final for XP loss
-    flags: ['penalty','daily'],
-    fieldId: t.fieldId, unit: t.qtyType, amount: 0,
-    tokens: -(lossTok||0)
-  });
-}
+      // record penalty in history with negative final and actual token spend
+      state.history.push({
+        id: uid(), date: day, taskId: t.id, name: `Penalty: ${t.name}`,
+        base: 0, final: -xpLoss,
+        flags: ['penalty','daily'],
+        fieldId: t.fieldId, unit: t.qtyType, amount: 0,
+        tokens: -spent
+      });
+    }
   });
   save();
 }
 function applyWeeklyPenalties(day){
   const [s,e]=rangeWeek(day);
   state.tasks.forEach(t=>{
-    if(state.level < (t.levelReq||1)) return; // skip penalties for locked (higher-level) tasks
+    if(state.level < (t.levelReq||1)) return;
     if(t.freq!=='weekly' && t.freq!=='custom') return;
     if(wasSkippedOrPostponed(t.id,s,e)) return;
     const pr=progressForRange(t,s,e);
     if(!pr.done){
-  const lossTok = penaltyFor(t);
-  const xpLoss  = (Number(t.points)||0) * 2;
+      const lossTok = penaltyFor(t);
+      const xpLoss  = (Number(t.points)||0) * 2;
 
-  adjustMainXP(-xpLoss);
-  adjustFieldXP(t.fieldId, -xpLoss);
-  if(lossTok>0) state.tokens -= lossTok;
+      adjustMainXP(-xpLoss);
+      adjustFieldXP(t.fieldId, -xpLoss);
 
-  state.history.push({
-    id:uid(),date:e,taskId:t.id,name:`Penalty (week): ${t.name}`,
-    base:0,final:-xpLoss,flags:['penalty','week'],
-    fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-(lossTok||0)
-  });
-}
+      // safe token deduction
+      const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
+
+      state.history.push({
+        id:uid(),date:e,taskId:t.id,name:`Penalty (week): ${t.name}`,
+        base:0,final:-xpLoss,flags:['penalty','week'],
+        fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-spent
+      });
+    }
   });
   save();
 }
 function applyMonthlyPenalties(day){
   const [s,e]=rangeMonth(day);
   state.tasks.forEach(t=>{
-    if(state.level < (t.levelReq||1)) return; // skip penalties for locked (higher-level) tasks
+    if(state.level < (t.levelReq||1)) return;
     if(t.freq!=='monthly') return;
     if(wasSkippedOrPostponed(t.id,s,e)) return;
     const pr=progressForRange(t,s,e);
     if(!pr.done){
-  const lossTok = penaltyFor(t);
-  const xpLoss  = (Number(t.points)||0) * 2;
+      const lossTok = penaltyFor(t);
+      const xpLoss  = (Number(t.points)||0) * 2;
 
-  adjustMainXP(-xpLoss);
-  adjustFieldXP(t.fieldId, -xpLoss);
-  if(lossTok>0) state.tokens -= lossTok;
+      adjustMainXP(-xpLoss);
+      adjustFieldXP(t.fieldId, -xpLoss);
 
-  state.history.push({
-    id:uid(),date:e,taskId:t.id,name:`Penalty (month): ${t.name}`,
-    base:0,final:-xpLoss,flags:['penalty','month'],
-    fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-(lossTok||0)
-  });
-}
+      // safe token deduction
+      const spent = lossTok>0 ? spendTokensSafe(lossTok) : 0;
+
+      state.history.push({
+        id:uid(),date:e,taskId:t.id,name:`Penalty (month): ${t.name}`,
+        base:0,final:-xpLoss,flags:['penalty','month'],
+        fieldId:t.fieldId,unit:t.qtyType,amount:0,tokens:-spent
+      });
+    }
   });
   save();
 }
@@ -507,7 +514,15 @@ function autoRefundPurchases(amountNeeded){
   }
   save();
 }
-
+// Spend up to available tokens; never go below 0.
+// Returns the actual amount deducted (0..amount).
+function spendTokensSafe(amount){
+  const want = Math.max(0, Number(amount) || 0);
+  const have = Math.max(0, Number(state.tokens) || 0);
+  const spent = Math.min(want, have);
+  state.tokens = have - spent;
+  return spent;
+}
 function renderShop(){
   const box = $('#shopList'); if(!box) return;
   box.innerHTML = '';
